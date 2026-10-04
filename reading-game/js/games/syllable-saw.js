@@ -73,9 +73,9 @@
   /* [split, emoji, spoken chunks (respelled so speech sounds right), type, other valid splits, meaning] */
   var RAW = {
     1: [
-      ['sun|set', '🌅'], ['cup|cake', '🧁'], ['hot|dog', '🌭'], ['back|pack', '🎒'], ['sail|boat', '⛵'],
-      ['rain|bow', '🌈'], ['snow|man', '⛄'], ['pop|corn', '🍿'], ['sea|shell', '🐚'], ['foot|ball', '🏈'],
-      ['mail|box', '📮'], ['gold|fish', '🐠'], ['pan|cake', '🥞'], ['bath|tub', '🛁'], ['air|plane', '✈️']
+      ['sun|set', '🌅'], ['hot|dog', '🌭'], ['back|pack', '🎒'], ['bath|tub', '🛁'], ['lap|top', '💻'],
+      ['pad|lock', '🔒'], ['cob|web', '🕸️'], ['lip|stick', '💄'], ['chop|stick', '🥢'], ['desk|top', '🖥️'],
+      ['lunch|box', '🍱'], ['snap|shot', '📸']
     ],
     2: [
       ['rab|bit', '🐰'], ['mag|net', '🧲'], ['bas|ket', '🧺'], ['in|sect', '🐛'], ['ten|nis', '🎾'],
@@ -84,6 +84,9 @@
       ['trum|pet', '🎺']
     ],
     3: [
+      ['rain|bow', '🌈', '', 'comp'], ['snow|man', '⛄', '', 'comp'], ['sea|shell', '🐚', '', 'comp'],
+      ['mail|box', '📮', '', 'comp'], ['sail|boat', '⛵', '', 'comp'], ['pan|cake', '🥞', '', 'comp'],
+      ['cup|cake', '🧁', '', 'comp'],
       ['tur|tle', '🐢', 'tur|tul', 'cle'], ['can|dle', '🕯️', 'can|dul', 'cle'], ['ap|ple', '🍎', 'ap|ul', 'cle'],
       ['puz|zle', '🧩', 'puz|ul', 'cle'], ['bub|ble', '🫧', 'bub|ul', 'cle'], ['cas|tle', '🏰', 'cas|ul', 'cle'],
       ['nee|dle', '🪡', 'nee|dul', 'cle'], ['ea|gle', '🦅', 'ee|gul', 'cle'], ['bee|tle', '🪲', 'bee|tul', 'cle'],
@@ -95,6 +98,7 @@
       ['si|ren', '🚨', 'sigh|run', 'open'], ['pi|rate', '🏴‍☠️', 'pie|rate', 'open']
     ],
     4: [
+      ['air|plane', '✈️', '', 'comp'], ['pop|corn', '🍿', '', 'comp'], ['foot|ball', '🏈', '', 'comp'],
       ['jump|ing', '🤸'], ['help|ful', '🤝', 'help|full', '', null, 'giving a hand to someone'],
       ['un|lock', '🔓', 'un|lock', '', null, 'to open with a key'],
       ['re|wind', '⏪', 'ree|wind', '', null, 'to wind it back again'],
@@ -108,6 +112,7 @@
       ['un|wrap', '🎁', 'un|rap']
     ],
     5: [
+      ['gold|fish', '🐠', '', 'comp'],
       ['fan|tas|tic', '🤩', 'fan|tass|tick'], ['oc|to|pus', '🐙', 'ock|toh|pus'], ['as|tro|naut', '🧑‍🚀', 'ass|troh|nawt'],
       ['bas|ket|ball', '🏀'], ['but|ter|fly', '🦋'], ['ham|bur|ger', '🍔'], ['com|pu|ter', '💻', 'com|pyoo|ter'],
       ['di|no|saur', '🦖', 'dye|noh|sore'], ['ba|na|na', '🍌', 'buh|nan|uh'], ['to|ma|to', '🍅', 'tuh|may|toe'],

@@ -308,3 +308,32 @@ the word-builder L2 list contains vowel-team words that haven't been taught yet;
 
 ## 4. Little track tweaks
 - captains-quiz on the little track is **6** questions. `def.rounds` may be a number or `function(profile) -> number`; app.js resolves it at launch.
+
+## v4.1 AMENDMENT: Big Captain is a 2nd grader reading BELOW grade level (BINDING, overrides v4 where it conflicts)
+Design for a struggling reader: content he can decode, but with interests matched to his age, many successes, and no shame.
+
+**Hi-lo content (high interest, low reading level).** Levels 1–3 content must not feel babyish. Use themes a 7–8-year-old respects: sharks, pirates, storms, shipwrecks, sea monsters, robots, treasure, video-game-style challenges, cooking disasters. Big Captain's screens have no baby imagery. Stories at L1–2 are short but genuinely funny or exciting.
+
+**Never show level or grade to the child.** No "Level 1", "grade", or "easy/hard" labels anywhere kid-facing. Levels appear only in the grown-ups panel. The profile picker and map never compare the two siblings (no coin, star or rank totals on the picker), because a younger sister catching up is a real risk to his motivation.
+
+**Strictly decodable text.** Every word in a sentence, story or quest text at level N must be decodable using the patterns taught at levels ≤ N, or be in the sight-word lists of levels ≤ N, or be a story name listed in that item's `names` array. Replace current non-decodable words (e.g. "carried", "worry", "friend" at low levels). Add `tools/check-decodable.js` (node), which validates all content and lists violations, and make it pass.
+
+**Explicit phonics support.**
+- word-builder: a 🐢 "Sound it out" button that highlights each tile in turn while speaking its sound, then blends ("sss… ah… t… sat!").
+- After 2 misses, don't just pulse a hint. Model the answer explicitly ("This says rain: r… ai… n. Rain!"), then let him build it.
+- Vowel teams, digraphs and r-controlled patterns appear as one colored tile in a consistent color per pattern type.
+
+**Tricky Words (spaced review).** Every word missed in any big-track game goes into a per-profile Tricky Words list (`RG.progress.tricky`). Each voyage of word-builder, sight-fishing and the quiz mixes in 1–2 tricky words. A word leaves the list after it is correct on 3 different days. The grown-ups panel shows the current list for offline practice.
+
+**Fluency: repeated and echo reading in story-cove.**
+- Each page offers 🔊 "Listen" (karaoke), then 🎤 "My turn" (he reads aloud; there is no mic and no scoring, just a "Done!" button), then praise.
+- Rereading an already-finished story earns a "Smooth Sailor" badge on its 2nd and 3rd read, because repeated reading is the evidence-based fluency builder.
+- Optional "Beat your time" mode is OFF by default and can be enabled in the grown-ups panel.
+
+**Tuned for success.**
+- Big-track promotion stays at ≥85% of the last 8. Demotion happens when below 60% of the last 6, so frustration is caught faster.
+- Placement starts at the bottom of the ladder with finer rungs (cat → ship → frog → cake → rain → star → jumping). Place at the highest rung passed 2/2, then **one rung lower**, so the first sessions feel easy.
+
+**Growth, not grades.**
+- Kid-facing celebration compares him only to himself: "You learned 6 new words this week!" and "You read 3 stories!"
+- Grown-ups panel: a weekly summary of words mastered, Tricky Words, time played and estimated level per skill, with a plain-language "what to practice at home" note.

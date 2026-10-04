@@ -233,3 +233,41 @@ Scene types (≥ 15 scenes total, tagged by track/level):
 ## Map changes (CORE)
 - Islands order: reading-quest and captains-quiz appear on both tracks. captains-quiz is drawn as a special "Challenge Island" at the end of the path.
 - A "Why Read?" scroll on the map that lists the Reading Superpowers the child has unlocked (`RG.superpowers.add(id, label, emoji)` / `.list()`, persisted per profile, implemented by CORE, used by reading-quest).
+
+---
+
+# ADDENDUM v3: Full screen, expressive voice, Challenge Island flow (BINDING)
+
+## 1. Full screen on tablets
+- A ⛶ full-screen toggle button on the map toolbar and in the game header (icon flips to exit when active).
+- "Tap to start" also tries to enter full screen, since it is a user gesture, when `RG.settings.autoFullscreen` is on (default true).
+- Use `document.documentElement.requestFullscreen` with the `webkitRequestFullscreen` fallback, and listen for `fullscreenchange` / `webkitfullscreenchange`. Wrap every call in try/catch and handle promise rejection silently.
+- If full screen is unsupported or rejected (iPhone Safari, sandboxed iframes): show a one-time friendly toast with the right instructions. On iOS Safari that is "Share → Add to Home Screen". Hide the toggle when `fullscreenEnabled`/`webkitFullscreenEnabled` is false.
+- Full screen must survive navigation between screens; the app re-renders inside `#app`, never reloading. Re-check the layout in full screen at 1024x768 and 768x1024.
+- Grown-ups panel: an "Open in full screen on start" toggle.
+
+## 2. Expressive voice (core.js RG.speak)
+The Web Speech API has no emotion control; we can only control **voice choice, pitch, rate, volume, and phrasing**. Use all of them:
+- **Voice ranking:** auto-pick the best natural English voice. Prefer names containing "Natural", "Neural", "Premium", "Enhanced" or "Online", and Google voices; known good voices include Samantha (Enhanced), Ava (Premium), Zoe, Evan, Microsoft Aria/Jenny/Guy Online (Natural) and Google US English. Then prefer en-US, then any en. Avoid novelty voices (Albert, Bad News, Bells, Boing, Bubbles, Cellos, Good News, Jester, Organ, Superstar, Trinoids, Whisper, Wobble, Zarvox, Fred, Junior, Ralph, Kathy). The grown-ups voice picker lists only English voices, best first, with a ▶ test button that speaks an expressive sample.
+- **Moods:** `RG.speak(text, {mood})`, where mood is one of `excited | happy | gentle | question | story | calm`. Each mood maps to base pitch/rate/volume. Excited is higher pitch and a bit faster. Gentle (used for "Try again") is softer and slower. Story is warm, with a varied cadence.
+- **Auto-mood when none is given:** `!` → excited, `?` → question, and text starting with "Try again"/"Oops"/"Good try" → gentle.
+- **Phrasing:** split text into sentences/clauses and speak them as a queue of utterances. Vary pitch per chunk (a question rises on its last chunk; an exclamation gets a pitch lift) with small random jitter (±0.05 pitch, ±0.04 rate) so repeated praise never sounds identical. Pause between chunks: about 120 ms after commas and 250 ms after sentence ends.
+- `RG.speak` keeps its contract: it cancels prior speech, returns a Promise that resolves when the WHOLE queue ends (with the timeout fallback), and `opts.rate` / `opts.pitch` / `opts.onboundary` still work. When `onboundary` is passed (story karaoke), speak as ONE utterance so word offsets stay valid.
+- **Praise variety:** expand `RG.praise()` to 20+ lines with interjections ("Woohoo!", "Yes! Nailed it!", "Shiver me timbers, that's right!", "High five, Captain!"). Speak praise with mood `excited`.
+- Update the game files' calls where a mood clearly fits. Wrong-answer prompts use `gentle`. Story Cove may use `story` for its non-karaoke prompts. Don't restructure the games.
+- Grown-ups panel: an "Expressive voice" toggle (default on). Off means the old flat delivery.
+
+## 3. Recommended islands are clickable after Captain's Challenge
+- The quiz's "Islands to practice" items become big tappable buttons, filtered to games that exist on the current profile's track.
+- Tapping one calls `ctx.finish({ next: gameId })`. The app awards the normal treasure (stars, sticker, +5 coins), and the treasure screen's primary button becomes "⛵ Sail to <Island>", which launches that game. "Back to map" stays.
+- Plain "Finish" still calls `ctx.finish()` with no next.
+- Persist the latest recommendations per profile: `RG.progress.setRecommended([ids])` and `.recommended()`. On the map, recommended islands show a pulsing "Practice me!" flag until that island's next completed voyage.
+
+## 4. Challenge Island locked until the other islands are done
+- New persisted per-profile `RG.progress.markComplete(gameId)` and `RG.progress.completed(gameId)` (a count of finished voyages); app.js calls `markComplete` in the finish → treasure path.
+- captains-quiz is **locked** until every other island on the profile's track has at least one completed voyage. While locked:
+  - the island is drawn grey/misty with a 🔒 and a "3 of 6" progress badge;
+  - tapping it speaks (gently) "Finish all the other islands first! Just N more to go." and gently pulses the not-yet-done islands;
+  - the not-yet-done islands show a small ✨ "new" marker.
+- When it first unlocks (on return to the map after the final voyage), play a short unlock celebration ("The Challenge Island is open!"). It stays unlocked forever.
+- Grown-ups panel: an "Unlock Challenge Island now" override toggle per profile.

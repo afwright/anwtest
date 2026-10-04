@@ -63,7 +63,7 @@
         { id: 'big', name: 'Big Captain', track: 'big', avatar: '🦊' }
       ],
       data: {},
-      settings: { speechRate: 1, voiceURI: '', autoFullscreen: true, expressive: true }
+      settings: { speechRate: 1, voiceURI: '', autoFullscreen: true, expressive: true, beatTime: false }
     };
   }
   function load() {
@@ -73,6 +73,7 @@
     s.data = s.data || {}; s.settings = s.settings || { speechRate: 1, voiceURI: '' };
     if (typeof s.settings.autoFullscreen !== 'boolean') s.settings.autoFullscreen = true;
     if (typeof s.settings.expressive !== 'boolean') s.settings.expressive = true;
+    if (typeof s.settings.beatTime !== 'boolean') s.settings.beatTime = false;   // v4.1 "Beat your time" (story-cove reads it), off by default
     return s;
   }
   var state = load();
@@ -92,6 +93,18 @@
     if (!d.completed || typeof d.completed !== 'object' || Array.isArray(d.completed)) d.completed = {};
     if (!Array.isArray(d.recommended)) d.recommended = [];
     d.unlocked = !!d.unlocked; d.unlockOverride = !!d.unlockOverride;
+    // v4 fields (older saves lack them; every read is defaulted so an old rg_v2 save migrates cleanly)
+    if (!Array.isArray(d.tricky)) d.tricky = [];
+    if (!Array.isArray(d.mastered)) d.mastered = [];
+    if (!Array.isArray(d.errors)) d.errors = [];
+    if (!Array.isArray(d.badges)) d.badges = [];
+    if (!d.kv || typeof d.kv !== 'object' || Array.isArray(d.kv)) d.kv = {};
+    if (!d.daily || typeof d.daily !== 'object' || Array.isArray(d.daily)) d.daily = {};
+    if (typeof d.placed !== 'boolean') {
+      // a profile that already has progress is not forced through the check-in (grown-ups can re-run it)
+      var hasProgress = d.stars > 0 || Object.keys(d.skills).length > 0 || d.lifetime > 0;
+      d.placed = hasProgress;
+    }
     return d;
   }
   function cur() { return pdata(RG.profile().id); }
@@ -109,24 +122,138 @@
   RG.profileData = pdata;
   RG.CHALLENGE_ID = 'captains-quiz';
 
+  /* ---------------- progress helpers ---------------- */
+  var BIG5 = ['phonics', 'blends', 'long-words', 'sight-words', 'comprehension', 'fluency', 'real-world', 'quiz'];
+  function maxLevelFor(skillId, track) {
+    if (track === 'big') { if (BIG5.indexOf(skillId) >= 0) return 5; if (skillId === 'rhyme') return 4; }
+    return 3;
+  }
+  function norm(w) { return String(w == null ? '' : w).toLowerCase().replace(/[^a-z' -]/g, '').trim(); }
+  function dayKey(back) {
+    var t = new Date(Date.now() - (back || 0) * 86400000);
+    function z(n) { return (n < 10 ? '0' : '') + n; }
+    return t.getFullYear() + '-' + z(t.getMonth() + 1) + '-' + z(t.getDate());
+  }
+  function dayBucket(d) {
+    var k = dayKey(0), b = d.daily[k];
+    if (!b || typeof b !== 'object') b = d.daily[k] = {};
+    if (typeof b.secs !== 'number') b.secs = 0;
+    if (typeof b.stories !== 'number') b.stories = 0;
+    if (typeof b.voyages !== 'number') b.voyages = 0;
+    if (!Array.isArray(b.learned)) b.learned = [];
+    var keys = Object.keys(d.daily);
+    if (keys.length > 60) keys.sort().slice(0, keys.length - 60).forEach(function (x) { delete d.daily[x]; });
+    return b;
+  }
+
   /* ---------------- progress ---------------- */
   RG.progress = {
     record: function (skillId, correct) {
       var d = cur(), s = d.skills[skillId] || (d.skills[skillId] = { hist: [], level: 1, total: 0, right: 0 });
+      if (!Array.isArray(s.hist)) s.hist = [];
+      if (typeof s.level !== 'number' || s.level < 1) s.level = 1;
       s.hist.push(correct ? 1 : 0); if (s.hist.length > 10) s.hist.shift();
-      s.total++; if (correct) s.right++;
-      var h = s.hist;
-      if (h.length >= 8) {
-        var last8 = h.slice(-8), r8 = last8.reduce(function (a, b) { return a + b; }, 0) / 8;
-        if (r8 >= 0.85 && s.level < 3) { s.level++; s.hist = []; }
+      s.total = (s.total || 0) + 1; if (correct) s.right = (s.right || 0) + 1;
+      var max = maxLevelFor(skillId, RG.profile().track), big = RG.profile().track === 'big';
+      function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
+      if (s.hist.length >= 8) {
+        var r8 = sum(s.hist.slice(-8)) / 8;
+        if (r8 >= 0.85 && s.level < max) { s.level++; s.hist = []; }
       }
-      if (s.hist.length >= 6) {
-        var acc = s.hist.reduce(function (a, b) { return a + b; }, 0) / s.hist.length;
-        if (acc < 0.5 && s.level > 1) { s.level--; s.hist = []; }
+      if (big) { // v4.1: big track drops back faster (below 60% of the last 6) so frustration is caught early
+        if (s.hist.length >= 6 && sum(s.hist.slice(-6)) / 6 < 0.6 && s.level > 1) { s.level--; s.hist = []; }
+      } else if (s.hist.length >= 6) {
+        if (sum(s.hist) / s.hist.length < 0.5 && s.level > 1) { s.level--; s.hist = []; }
       }
+      if (s.level > max) s.level = max;
       save();
     },
-    level: function (skillId) { var s = cur().skills[skillId]; return s ? s.level : 1; },
+    /* highest level for a skill on the active (or given) track: big-track skills 5, rhyme 4 (big) / 3 (little), little skills 3 */
+    maxLevel: function (skillId, profileId) {
+      var tr = RG.profile().track;
+      if (profileId) state.profiles.forEach(function (x) { if (x.id === profileId) tr = x.track; });
+      return maxLevelFor(skillId, tr);
+    },
+    level: function (skillId, profileId) {
+      var p = RG.profile();
+      if (profileId) state.profiles.forEach(function (x) { if (x.id === profileId) p = x; });
+      var s = pdata(p.id).skills[skillId], max = maxLevelFor(skillId, p.track);
+      var lv = s && typeof s.level === 'number' ? s.level : 1;
+      return Math.max(1, Math.min(max, Math.round(lv)));
+    },
+    /* placement and the grown-ups override */
+    setLevel: function (skillId, n, profileId) {
+      var p = RG.profile();
+      if (profileId) state.profiles.forEach(function (x) { if (x.id === profileId) p = x; });
+      var d = pdata(p.id), s = d.skills[skillId] || (d.skills[skillId] = { hist: [], level: 1, total: 0, right: 0 });
+      n = Math.round(+n) || 1;
+      s.level = Math.max(1, Math.min(maxLevelFor(skillId, p.track), n)); s.hist = []; save();
+      return s.level;
+    },
+    recordError: function (skillId, type, word) {
+      var d = cur();
+      d.errors.push({ skill: String(skillId), type: String(type), word: word == null ? '' : String(word), at: new Date().toISOString() });
+      if (d.errors.length > 400) d.errors.splice(0, d.errors.length - 400);
+      save();
+    },
+    errors: function (profileId) { return pdata(profileId || RG.profile().id).errors.slice(); },
+    badge: function (id, label, emoji) {
+      var d = cur(); if (!id) return false;
+      for (var i = 0; i < d.badges.length; i++) if (d.badges[i].id === id) return false;
+      d.badges.push({ id: id, label: label || id, emoji: emoji || '🏅', at: new Date().toISOString() }); save(); return true;
+    },
+    badges: function (profileId) { return pdata(profileId || RG.profile().id).badges.slice(); },
+    get: function (key, profileId) { var v = pdata(profileId || RG.profile().id).kv[key]; return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); },
+    set: function (key, value) { cur().kv[key] = value === undefined ? null : JSON.parse(JSON.stringify(value)); save(); },
+    /* Captain's Check-in has been done (or skipped) for this profile */
+    placed: function (profileId) { return pdata(profileId || RG.profile().id).placed; },
+    setPlaced: function (v, profileId) { pdata(profileId || RG.profile().id).placed = !!v; save(); },
+    /* per-day buckets feed the kid-facing growth line and the grown-ups weekly summary */
+    addPlayTime: function (secs) { if (secs > 0) { var b = dayBucket(cur()); b.secs += Math.round(secs); save(); } },
+    weekly: function (profileId) {
+      var d = pdata(profileId || RG.profile().id), out = { learned: 0, mastered: 0, stories: 0, voyages: 0, secs: 0, words: [] };
+      var seen = {}, i;
+      for (i = 0; i < 7; i++) {
+        var b = d.daily[dayKey(i)]; if (!b) continue;
+        out.secs += b.secs || 0; out.stories += b.stories || 0; out.voyages += b.voyages || 0;
+        (b.learned || []).forEach(function (w) { if (!seen[w]) { seen[w] = 1; out.words.push(w); } });
+      }
+      out.learned = out.words.length;
+      var cutoff = Date.now() - 7 * 86400000;
+      out.mastered = d.mastered.filter(function (m) { return +new Date(m.at) >= cutoff; }).length;
+      return out;
+    },
+    mastered: function (profileId) { return pdata(profileId || RG.profile().id).mastered.slice(); },
+    tricky: {
+      add: function (word, skill) {
+        word = norm(word); if (!word) return;
+        var d = cur(), list = d.tricky, i;
+        for (i = 0; i < list.length; i++) if (list[i].word === word) { list[i].skill = skill || list[i].skill; list[i].dayList = []; save(); return; }
+        list.push({ word: word, skill: skill || '', dayList: [], at: new Date().toISOString() }); save();
+      },
+      /* a correct answer on a distinct day; the word leaves the list after 3 different days */
+      correct: function (word) {
+        word = norm(word); if (!word) return false;
+        var d = cur(), list = d.tricky, i, today = dayKey(0);
+        for (i = 0; i < list.length; i++) if (list[i].word === word) {
+          var it = list[i];
+          if (it.dayList.indexOf(today) < 0) it.dayList.push(today);
+          var b = dayBucket(d); if (b.learned.indexOf(word) < 0) b.learned.push(word);
+          if (it.dayList.length >= 3) { list.splice(i, 1); d.mastered.push({ word: word, skill: it.skill, at: new Date().toISOString() }); }
+          save(); return it.dayList.length >= 3;
+        }
+        return false;
+      },
+      remove: function (word) {
+        word = norm(word); var d = cur(), n = d.tricky.length;
+        d.tricky = d.tricky.filter(function (t) { return t.word !== word; }); if (d.tricky.length !== n) save();
+      },
+      list: function (skill, profileId) {
+        return pdata(profileId || RG.profile().id).tricky
+          .filter(function (t) { return !skill || t.skill === skill; })
+          .map(function (t) { return { word: t.word, skill: t.skill, days: t.dayList.length }; });
+      }
+    },
     accuracy: function (skillId) {
       var s = cur().skills[skillId]; if (!s || !s.hist.length) return null;
       return Math.round(100 * s.hist.reduce(function (a, b) { return a + b; }, 0) / s.hist.length);
@@ -140,6 +267,7 @@
     markComplete: function (gameId) {
       var d = cur(); if (!gameId) return;
       d.completed[gameId] = (d.completed[gameId] || 0) + 1;
+      var bk = dayBucket(d); bk.voyages++; if (gameId === 'story-cove') bk.stories++;
       var i = d.recommended.indexOf(gameId); if (i >= 0) d.recommended.splice(i, 1);
       save();
     },
@@ -238,7 +366,10 @@
   RG.flushRankUp = function (delay) {
     var idx = RG._pendingRank; if (idx == null) return;
     RG._pendingRank = null;
-    setTimeout(function () { RG.rankUp(idx); }, delay || 1400);
+    setTimeout(function () {
+      if (document.querySelector('.game-stage')) { RG._pendingRank = idx; return; } // a game started meanwhile: wait again
+      RG.rankUp(idx);
+    }, delay || 1400);
   };
   RG.rankUp = function (idx) {
     var r = RANKS[idx];

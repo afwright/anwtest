@@ -5,7 +5,7 @@
   if (!RG || !RG.registerGame) { return; }
 
   var STYLE_ID = 'sf-styles';
-  var FISH_W = 150, FISH_H = 66, LANE = 72;
+  var FISH_W = 170, FISH_H = 66, LANE = 72;
   var CSS = [
     '.sf-stage{display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:flex-start;padding:6px 8px 12px;width:100%;box-sizing:border-box;}',
     '.sf-bar{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}',
@@ -23,10 +23,10 @@
     ' animation-timing-function:linear;animation-iteration-count:infinite;will-change:left;}',
     '.sf-fish svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 3px 2px rgba(0,0,0,.25));}',
     '.sf-fish.sf-right svg{transform:scaleX(-1);}',
-    '.sf-word{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;',
-    ' font-family:inherit;font-size:1.55rem;font-weight:700;color:#12385c;letter-spacing:.04em;pointer-events:none;}',
-    '.sf-fish.sf-left .sf-word{left:14%;width:56%;}',
-    '.sf-fish.sf-right .sf-word{right:14%;width:56%;}',
+    '.sf-word{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;white-space:nowrap;',
+    ' font-family:inherit;font-size:1.55rem;font-weight:700;color:#12385c;letter-spacing:.03em;pointer-events:none;}',
+    '.sf-fish.sf-left .sf-word{left:13%;width:62%;}',
+    '.sf-fish.sf-right .sf-word{right:13%;width:62%;}',
     '.sf-fish.hint svg{animation:sf-glow 0.9s ease-in-out infinite;}',
     '@keyframes sf-glow{0%,100%{filter:drop-shadow(0 0 4px #fff3);}50%{filter:drop-shadow(0 0 14px #ffe14a) drop-shadow(0 0 22px #ffe14a);}}',
     '.sf-fish.sf-gone{animation:none !important;transition:left .9s ease-in,opacity .9s ease-in;opacity:.2;pointer-events:none;}',
@@ -48,12 +48,14 @@
   var LOCAL = {
     1: ['the', 'a', 'and', 'to', 'is', 'it', 'in', 'you', 'can', 'see', 'go', 'up', 'we', 'my', 'look', 'big', 'run', 'play'],
     2: ['was', 'that', 'said', 'with', 'she', 'he', 'they', 'have', 'good', 'but', 'what', 'all', 'are', 'came', 'into', 'now'],
-    3: ['because', 'around', 'after', 'again', 'every', 'could', 'from', 'give', 'just', 'know', 'open', 'over', 'put', 'thank', 'were', 'when']
+    3: ['because', 'around', 'after', 'again', 'every', 'could', 'from', 'give', 'just', 'know', 'open', 'over', 'put', 'thank', 'were', 'when'],
+    4: ['about', 'better', 'bring', 'carry', 'clean', 'draw', 'drink', 'eight', 'fall', 'grow', 'hold', 'hurt', 'keep', 'kind', 'laugh', 'light'],
+    5: ['together', 'today', 'myself', 'never', 'always', 'before', 'between', 'children', 'country', 'different', 'family', 'follow', 'happen', 'later', 'little', 'under']
   };
   var FISH_COLORS = ['#ffd24a', '#ff9f68', '#ff8fb8', '#9be37a', '#c7a6ff', '#8ee8e0', '#ffc2d6'];
 
   function fishSvg(color) {
-    return '<svg viewBox="0 0 150 66" aria-hidden="true">' +
+    return '<svg viewBox="0 0 150 66" preserveAspectRatio="none" aria-hidden="true">' +
       '<polygon points="112,33 148,6 148,60" fill="' + color + '" stroke="#12385c" stroke-width="3" stroke-linejoin="round"/>' +
       '<ellipse cx="64" cy="33" rx="62" ry="30" fill="' + color + '" stroke="#12385c" stroke-width="3"/>' +
       '<ellipse cx="64" cy="33" rx="52" ry="22" fill="#fff" opacity=".78"/>' +
@@ -61,13 +63,37 @@
       '</svg>';
   }
 
-  function clean(w) { return String(w).toLowerCase().replace(/[^a-z']/g, ''); }
+  function wordSize(w) {
+    var n = String(w).length;
+    return n <= 4 ? 1.55 : n === 5 ? 1.4 : n === 6 ? 1.25 : n === 7 ? 1.12 : 1.0;
+  }
 
+  function sightLevels() {
+    var c = RG.content && RG.content.sightWords, out = [];
+    if (!c) { return out; }
+    for (var l = 1; l <= 5; l++) { if (c['level' + l] && c['level' + l].length >= 6) { out.push(l); } }
+    return out;
+  }
   function levelList(level) {
-    var c = RG.content && RG.content.sightWords;
-    var l = c && c['level' + level];
-    if (l && l.length >= 6) { return l.map(String).filter(function (w) { return w; }); }
+    var avail = sightLevels(), lv = 0;
+    if (avail.indexOf(level) >= 0) { lv = level; }
+    else {
+      var lower = avail.filter(function (n) { return n < level; });
+      lv = lower.length ? lower[lower.length - 1] : (avail[0] || 0);
+    }
+    if (lv) { return RG.content.sightWords['level' + lv].map(String).filter(function (w) { return w; }); }
     return LOCAL[level] || LOCAL[1];
+  }
+  function trickyList() {
+    try {
+      if (RG.progress && RG.progress.tricky && RG.progress.tricky.list) {
+        return (RG.progress.tricky.list('sight-words') || []).map(function (x) { return typeof x === 'string' ? x : x && x.word; }).filter(Boolean);
+      }
+    } catch (e) { /* ignore */ }
+    return [];
+  }
+  function trickyCall(name, a, b) {
+    try { if (RG.progress && RG.progress.tricky && RG.progress.tricky[name]) { RG.progress.tricky[name](a, b); } } catch (e) { /* ignore */ }
   }
 
   RG.registerGame({
@@ -81,15 +107,21 @@
       injectStyle();
       var dead = false;
       var timers = [];
-      var level = ctx.level || 1;
+      var level = Math.max(1, Math.min(5, ctx.level || 1));
       var rounds = ctx.rounds || 5;
       var nFish = level === 1 ? 4 : 5;
       var list = levelList(level);
       var allWords = list.slice();
-      [1, 2, 3].forEach(function (l) { if (l !== level) { levelList(l).forEach(function (w) { if (allWords.indexOf(w) < 0) { allWords.push(w); } }); } });
+      [level - 1, level + 1].forEach(function (l) { if (l >= 1 && l <= 5) { levelList(l).forEach(function (w) { if (allWords.indexOf(w) < 0) { allWords.push(w); } }); } });
       var targets = RG.shuffle(list).slice(0, rounds);
       while (targets.length < rounds) { targets.push(RG.sample(list)); }
-      var roundNo = 0, locked = true, misses = 0, target = '', caught = [];
+      // mix in 1-2 Tricky Words from earlier misses (never as round 1)
+      var trickySet = trickyList();
+      RG.shuffle(trickySet).slice(0, Math.random() < 0.5 ? 1 : 2).forEach(function (w, i) {
+        if (targets.indexOf(w) >= 0 || 1 + i >= targets.length) { return; }
+        targets[1 + i] = w;
+      });
+      var roundNo = 0, locked = true, misses = 0, target = '', caught = [], missLogged = false, modeled = false;
       var fishes = [];            // {el, lane, word, isTarget}
       var seaH = nFish * LANE + 16;
       var raf = null;
@@ -144,7 +176,9 @@
         var top = lane * LANE + 8 + Math.round(Math.random() * 6);
         var el = RG.el('button', { class: 'sf-fish ' + (dir === 'l' ? 'sf-left' : 'sf-right'), type: 'button', 'aria-label': 'fish', style: 'top:' + top + 'px' });
         el.innerHTML = fishSvg(color) + '<span class="sf-word"></span>';
-        el.querySelector('.sf-word').textContent = word;
+        var wEl = el.querySelector('.sf-word');
+        wEl.textContent = word;
+        wEl.style.fontSize = wordSize(word) + 'rem';
         el.style.animationName = dir === 'l' ? 'sf-l' : 'sf-r';
         el.style.animationDuration = dur.toFixed(1) + 's';
         // the fish being asked for starts well inside the sea so the child never waits for it to swim in
@@ -155,13 +189,14 @@
         sea.appendChild(el);
         fishes.push(f);
         if (isTarget && misses >= 2) { el.classList.add('hint'); }
+        if (isTarget && modeled) { el.style.animationPlayState = 'paused'; }
         return f;
       }
 
       function startRound() {
         if (dead) { return; }
         locked = true;
-        misses = 0;
+        misses = 0; missLogged = false; modeled = false;
         target = targets[roundNo];
         container.dataset.target = target;
         sea.innerHTML = '';
@@ -207,14 +242,30 @@
         if (f.isTarget) { onCatch(f); } else { onWrong(f); }
       }
 
+      function spellOut(w) { return String(w).replace(/[^A-Za-z]/g, '').split('').join(', '); }
+
+      function modelTarget() {
+        modeled = true;
+        var t = fishes.filter(function (x) { return x.isTarget && !x.done; })[0];
+        if (!t) { return; }
+        t.el.classList.add('hint');
+        t.el.style.animationPlayState = 'paused';   // hold the right fish still so it is easy to tap
+        quick('Look, this fish says ' + target + '. ' + spellOut(target) + '. ' + target + '! Tap it.', { mood: 'gentle' });
+      }
+
       function onWrong(f) {
         ctx.answer(false);
         misses++;
+        if (!missLogged) { missLogged = true; trickyCall('add', target, 'sight-words'); }
         RG.wobble(f.el);
-        quick('That says ' + f.word + '. Try again! Find ' + target + '.', { mood: 'gentle' });
         swimAway(f);
-        if (misses >= 2) {
-          fishes.forEach(function (x) { if (x.isTarget && !x.done) { x.el.classList.add('hint'); } });
+        if (misses >= 2 && !modeled) {
+          modelTarget();
+        } else {
+          quick('That says ' + f.word + '. Try again! Find ' + target + '.', { mood: 'gentle' });
+          if (misses >= 2) {
+            fishes.forEach(function (x) { if (x.isTarget && !x.done) { x.el.classList.add('hint'); } });
+          }
         }
       }
 
@@ -222,6 +273,7 @@
         locked = true;
         f.done = true;
         ctx.answer(true);
+        if (trickySet.indexOf(target) >= 0 && misses < 2) { trickyCall('correct', target); }
         fishes.forEach(function (x) { x.el.classList.remove('hint'); });
         // freeze and clone fish so it can leap into the bucket
         var rect = f.el.getBoundingClientRect();
@@ -249,7 +301,7 @@
         flyClones.push(clone);
         later(function () {
           say('You caught ' + target + '!')
-            .then(function () { if (!dead) { return say(RG.praise()); } })
+            .then(function () { if (!dead) { return say(RG.praise(), { mood: 'excited' }); } })
             .then(function () { return sleep(300); })
             .then(function () {
               if (dead) { return; }

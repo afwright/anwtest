@@ -114,8 +114,8 @@
   }
 
   /* ---------- grown-ups hold gate ---------- */
-  function gearButton() {
-    var btn = h('button', { class: 'iconbtn', 'aria-label': 'Grown-ups: hold for 3 seconds', text: '⚙️', style: '-webkit-touch-callout:none' });
+  // attaches a 3-second press-and-hold gate to any button; fn runs only after a full hold
+  function holdGate(btn, fn, hint) {
     var ring = h('div', { class: 'hold-ring' });
     ring.style.webkitMask = ring.style.mask = 'radial-gradient(circle, transparent 58%, #000 60%)';
     btn.appendChild(ring);
@@ -133,7 +133,7 @@
     }
     function stop(done) {
       if (!active) return; active = false; cancelAnimationFrame(raf); btn.classList.remove('holding');
-      if (done === true) openGrownUps(); else toast('Grown-ups: hold the gear for 3 seconds');
+      if (done === true) fn(); else toast(hint || 'Grown-ups: hold the gear for 3 seconds');
     }
     btn.addEventListener('pointerdown', start);
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, function () { stop(false); }); });
@@ -141,6 +141,9 @@
     btn.addEventListener('keyup', function (e) { if (e.key === 'Enter' || e.key === ' ') stop(false); });
     btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     return btn;
+  }
+  function gearButton() {
+    return holdGate(h('button', { class: 'iconbtn', 'aria-label': 'Grown-ups: hold for 3 seconds', text: '⚙️', style: '-webkit-touch-callout:none' }), openGrownUps);
   }
 
   /* ---------- start ---------- */
@@ -180,12 +183,32 @@
   }
 
   /* ---------- map ---------- */
+  // map order for the big track (games that are not registered are simply skipped)
+  var BIG_ORDER = ['rhyme-boat', 'word-builder', 'blend-cannon', 'syllable-saw', 'sight-fishing', 'sentence-match', 'story-cove', 'reading-quest', 'captains-quiz'];
+  function orderIslands(games, track) {
+    var quiz = games.filter(function (g) { return g.id === RG.CHALLENGE_ID; })[0];
+    var normal = games.filter(function (g) { return g.id !== RG.CHALLENGE_ID; });
+    if (track === 'big') {
+      var rank = function (g) { var i = BIG_ORDER.indexOf(g.id); return i < 0 ? 100 : i; };
+      normal = normal.map(function (g, i) { return { g: g, i: i }; })
+        .sort(function (a, b) { return rank(a.g) - rank(b.g) || a.i - b.i; }).map(function (x) { return x.g; });
+    }
+    return { quiz: quiz, ordered: normal.concat(quiz ? [quiz] : []) };
+  }
+  // kid-facing growth line: only ever compares him with himself
+  function growthLine() {
+    var w = RG.progress.weekly(), parts = [];
+    if (w.learned > 0) parts.push('You learned ' + w.learned + ' new word' + (w.learned === 1 ? '' : 's') + ' this week!');
+    if (w.stories > 0) parts.push('You read ' + w.stories + ' stor' + (w.stories === 1 ? 'y' : 'ies') + '!');
+    if (!parts.length && w.voyages > 0) parts.push('You finished ' + w.voyages + ' voyage' + (w.voyages === 1 ? '' : 's') + ' this week!');
+    return parts.join(' ');
+  }
+
   function mapScreen(greet) {
+    if (!RG.progress.placed()) { checkIn(); return; }
     var p = RG.profile(), rk = RG.rank();
     var games = RG.games.filter(function (g) { return !g.tracks || g.tracks.indexOf(p.track) >= 0; });
-    var quiz = games.filter(function (g) { return g.id === 'captains-quiz'; })[0];
-    var normal = games.filter(function (g) { return g.id !== 'captains-quiz'; });
-    var ordered = normal.concat(quiz ? [quiz] : []);
+    var od = orderIslands(games, p.track), quiz = od.quiz, ordered = od.ordered;
 
     var path = h('div', { class: 'path' });
     var pattern = ['l', 'm', 'r', 'm'];
@@ -245,8 +268,10 @@
       press(h('button', { class: 'btn' }, '📜 Why Read?'), openWhyRead),
       fsButton(true));
 
+    var gl = growthLine();
     var s = h('div', { class: 'screen' }, top,
-      h('div', { class: 'scroll' }, h('div', { class: 'map-body' }, boatEl(), path)), tools);
+      h('div', { class: 'scroll' }, h('div', { class: 'map-body' }, boatEl(),
+        gl ? h('div', { class: 'growth', role: 'status', text: '🌟 ' + gl }) : null, path)), tools);
     show(s);
     if (quiz && ch.allDone && !ch.unlocked) { // first return to the map after the final voyage
       RG.progress.setUnlocked(true);
@@ -347,13 +372,21 @@
     var s = session; session = null;
     if (!s) return;
     s.alive = false;
+    try { // time played (a long idle stretch is capped so one forgotten tab does not inflate the weekly summary)
+      var secs = Math.min((Date.now() - s.t0) / 1000, 20 * 60);
+      if (secs >= 3) RG.progress.addPlayTime(secs);
+    } catch (e) { /* ignore */ }
     if (s.cleanup) { var c = s.cleanup; s.cleanup = null; try { c(); } catch (e) { /* ignore */ } }
     try { RG.stopSpeaking(); } catch (e) { /* ignore */ }
   }
 
   function launch(def) {
-    var prof = RG.profile(), total = def.rounds || 5;
-    var ss = { def: def, alive: true, finishing: false, rounds: 0, wrong: false, earned: 0, cleanup: null };
+    var prof = RG.profile(), total = 5;
+    try { // def.rounds may be a number or function(profile) -> number
+      var rr = typeof def.rounds === 'function' ? def.rounds(prof) : def.rounds;
+      if (typeof rr === 'number' && rr >= 1 && rr <= 30) total = Math.round(rr);
+    } catch (e) { total = 5; }
+    var ss = { def: def, alive: true, finishing: false, rounds: 0, wrong: false, earned: 0, cleanup: null, t0: Date.now() };
     var dots = [];
     var dotsEl = h('div', { class: 'dots' + (total > 6 ? ' many' : ''), role: 'progressbar', 'aria-valuemax': total });
     for (var i = 0; i < total; i++) { var d = h('div', { class: 'dot' }); dots.push(d); dotsEl.appendChild(d); }
@@ -454,16 +487,41 @@
   /* ---------- grown-ups panel ---------- */
   var AVATARS = ['🐣', '🦊', '🐱', '🐶', '🐰', '🐼', '🦁', '🐸', '🐙', '🦄', '🐯', '🐵', '🐧', '🦖', '🧜‍♀️', '🧑‍🚀'];
   function openGrownUps() {
-    modal(function (sheet) {
+    var closeGU = function () {};
+    modal(function (sheet, close) {
+      closeGU = close;
       sheet.classList.add('gu');
       var body = h('div');
       sheet.appendChild(h('h2', { text: '⚙️ Grown-ups' }));
       sheet.appendChild(body);
       var confirmId = null;
-      function skillsList() {
+      var SKILL_NAMES = { letters: 'Letters', 'beginning-sounds': 'First sounds', writing: 'Writing letters', rhyme: 'Rhymes', phonics: 'Reading words (decoding)',
+        blends: 'Blends (frog, not fog)', 'long-words': 'Long words', 'sight-words': 'Sight words', comprehension: 'Sentences', fluency: 'Story fluency',
+        'real-world': 'Real-world reading', quiz: "Captain's Challenge" };
+      function skillsFor(p) {
         var seen = {}, out = [];
-        RG.games.forEach(function (g) { if (!seen[g.skill]) { seen[g.skill] = 1; out.push(g.skill); } });
+        RG.games.forEach(function (g) {
+          if (g.tracks && g.tracks.indexOf(p.track) < 0) return;
+          if (!seen[g.skill]) { seen[g.skill] = 1; out.push(g.skill); }
+        });
         return out;
+      }
+      var PATTERNS = {
+        'dropped-consonant': { text: 'Often drops a letter in blends (frog read as fog)', tip: 'Say the word slowly and tap a finger for each sound: f, r, o, g.' },
+        'skipped-chunk': { text: 'Skips a chunk when reading long words', tip: 'Clap the beats in the word, then read one chunk at a time and blend the chunks.' },
+        'wrong-split': { text: 'Cuts long words in the wrong place', tip: 'Find the vowels, then cut between the consonants in the middle (rab | bit).' }
+      };
+      function patternsFor(p) {
+        var cutoff = Date.now() - 7 * 86400000, by = {};
+        RG.progress.errors(p.id).forEach(function (e) {
+          if (+new Date(e.at) < cutoff) return;
+          var b = by[e.type] || (by[e.type] = { n: 0, words: [], skill: e.skill });
+          b.n++; if (e.word && b.words.indexOf(e.word) < 0 && b.words.length < 3) b.words.push(e.word);
+        });
+        return Object.keys(by).map(function (k) {
+          var m = PATTERNS[k] || { text: 'A pattern to watch in ' + (SKILL_NAMES[by[k].skill] || by[k].skill).toLowerCase() + ' (' + k.replace(/-/g, ' ') + ')', tip: 'Replay that island together for five minutes and talk about the tricky spots.' };
+          return { type: k, n: by[k].n, words: by[k].words, text: m.text, tip: m.tip };
+        }).sort(function (a, b) { return b.n - a.n; });
       }
       function sampleVoice(uri) {
         RG.speak("Ahoy, captain! You can read this. Can you find the treasure? Yes, you can!", { mood: 'happy', voiceURI: uri || undefined });
@@ -477,6 +535,13 @@
         return h('div', { class: 'gu-row' }, h('label', { text: label }),
           toggleSwitch(on, function (v) { RG.settings[key] = v; RG.saveSettings(); if (after && v) after(); }, label),
           h('span', { class: 'gu-help', text: help }));
+      }
+      function statBox(n, label) { return h('div', { class: 'stat' }, h('b', { text: String(n) }), h('small', { text: label })); }
+      function niceDate(iso) { try { return new Date(iso).toLocaleDateString(); } catch (e) { return ''; } }
+      function rerunCheckIn(p) {
+        RG.progress.setPlaced(false, p.id);
+        if (p.id === RG.profile().id && root.querySelector('.map-body')) { closeGU(); }
+        else toast('The check-in will start the next time ' + p.name + ' opens the map.', 3600);
       }
       function render() {
         body.innerHTML = '';
@@ -498,6 +563,7 @@
         body.appendChild(switchRow('Expressive voice', 'Varies pitch and pacing so praise sounds happy and "try again" sounds gentle. Off = flat voice.', 'expressive', true,
           function () { sampleVoice(sel ? sel.value : ''); }));
         body.appendChild(switchRow('Full screen', 'Open in full screen on start', 'autoFullscreen', true));
+        body.appendChild(switchRow('Beat your time', 'Story Cove shows a friendly timer so a child can try to read a page faster than last time. Off keeps reading calm and pressure-free.', 'beatTime', false));
         // profiles
         RG.profiles().forEach(function (p) {
           var d = RG.profileData(p.id), rk = RG.rank(p.id);
@@ -510,20 +576,64 @@
           }));
           body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Avatar' }), av));
           var seg = h('div', { class: 'seg' }, [['little', 'Little (ages 3-5)'], ['big', 'Big (ages 6-8)']].map(function (t) {
-            return press(h('button', { class: p.track === t[0] ? 'sel' : '', text: t[1] }), function () { RG.updateProfile(p.id, { track: t[0] }); render(); });
+            return press(h('button', { class: p.track === t[0] ? 'sel' : '', text: t[1] }), function () {
+              if (p.track !== t[0]) RG.progress.setPlaced(false, p.id); // a different track needs a fresh check-in
+              RG.updateProfile(p.id, { track: t[0] }); render();
+            });
           }));
-          body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Level' }), seg));
+          body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Track' }), seg));
           body.appendChild(h('div', { class: 'note' }, rk.emoji + ' ' + rk.name + '   |   🪙 ' + d.lifetime + ' earned in total, ' + d.coins + ' to spend   |   ⭐ ' + d.stars + '   |   🎟️ ' + d.stickers.length + ' stickers   |   🦸 ' + d.powers.length + ' superpowers'));
           var cs = RG.progress.challenge(p.id);
           body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Challenge Island' }),
             toggleSwitch(cs.override, function (v) { RG.progress.setUnlockOverride(v, p.id); render(); }, 'Unlock Challenge Island now for ' + p.name),
             h('span', { class: 'gu-help', text: 'Unlock Challenge Island now (' + (cs.locked ? cs.done + ' of ' + cs.total + ' islands finished' : 'currently open') + ')' })));
-          var rows = skillsList().map(function (sk) {
-            var st = d.skills[sk];
-            var acc = st && st.hist.length ? Math.round(100 * st.hist.reduce(function (a, b) { return a + b; }, 0) / st.hist.length) + '%' : '-';
-            return h('tr', {}, h('td', { text: sk }), h('td', { text: acc }), h('td', { text: st ? st.level : 1 }), h('td', { text: st ? st.total : 0 }));
+          // weekly summary
+          var wk = RG.progress.weekly(p.id), mins = Math.round(wk.secs / 60);
+          body.appendChild(h('div', { class: 'gu-sub', text: 'This week' }));
+          body.appendChild(h('div', { class: 'gu-stats' },
+            statBox(wk.mastered, 'words mastered'), statBox(wk.learned, 'tricky words practised'), statBox(wk.stories, 'stories read'),
+            statBox(wk.voyages, 'voyages finished'), statBox(mins, mins === 1 ? 'minute played' : 'minutes played')));
+          // skills with level override
+          var rows = skillsFor(p).map(function (sk) {
+            var st = d.skills[sk], lv = RG.progress.level(sk, p.id), max = RG.progress.maxLevel(sk, p.id);
+            var acc = st && st.hist && st.hist.length ? Math.round(100 * st.hist.reduce(function (a, b) { return a + b; }, 0) / st.hist.length) + '%' : '-';
+            var minus = press(h('button', { class: 'btn small lvl-btn', type: 'button', 'aria-label': 'Lower ' + sk + ' level', text: '−', disabled: lv <= 1, dataset: { skill: sk, dir: '-1' } }), function () { RG.progress.setLevel(sk, lv - 1, p.id); render(); });
+            var plus = press(h('button', { class: 'btn small lvl-btn', type: 'button', 'aria-label': 'Raise ' + sk + ' level', text: '+', disabled: lv >= max, dataset: { skill: sk, dir: '1' } }), function () { RG.progress.setLevel(sk, lv + 1, p.id); render(); });
+            return h('tr', {}, h('td', { text: SKILL_NAMES[sk] || sk }), h('td', { text: acc }),
+              h('td', { class: 'lvl-cell' }, minus, h('b', { class: 'lvl-val', text: lv + ' / ' + max }), plus), h('td', { text: st ? st.total : 0 }));
           });
-          body.appendChild(h('table', {}, h('tr', {}, h('th', { text: 'Skill' }), h('th', { text: 'Recent' }), h('th', { text: 'Level' }), h('th', { text: 'Tries' })), rows));
+          body.appendChild(h('div', { class: 'gu-tablewrap' }, h('table', {}, h('tr', {}, h('th', { text: 'Skill' }), h('th', { text: 'Recent' }), h('th', { text: 'Level (grown-ups only)' }), h('th', { text: 'Tries' })), rows)));
+          var chk = RG.progress.get('checkin', p.id);
+          body.appendChild(h('div', { class: 'gu-row' },
+            press(h('button', { class: 'btn small', type: 'button', text: '🧭 Re-run check-in', dataset: { rerun: p.id } }), function () { rerunCheckIn(p); }),
+            h('span', { class: 'gu-help', text: chk && chk.at ? 'Last check-in: ' + niceDate(chk.at) + '. It sets where each skill starts, one step below the best result.' : 'The check-in sets where each skill starts.' })));
+          // tricky words
+          var tw = RG.progress.tricky.list(null, p.id);
+          body.appendChild(h('div', { class: 'gu-sub', text: 'Tricky words' + (tw.length ? ' (' + tw.length + ')' : '') }));
+          if (!tw.length) body.appendChild(h('div', { class: 'note', text: 'None right now. Words missed in games land here and leave after 3 correct days.' }));
+          else {
+            body.appendChild(h('div', { class: 'chips tricky-list' }, tw.map(function (t) {
+              return h('span', { class: 'chip', title: t.skill }, h('b', { text: t.word }), h('small', { text: ' ' + t.days + '/3 days' }));
+            })));
+            body.appendChild(h('div', { class: 'gu-help', style: 'flex-basis:100%', text: 'Practice these on paper or the fridge: say the word, spell it aloud, use it in a sentence.' }));
+          }
+          // patterns we noticed
+          var pats = patternsFor(p);
+          body.appendChild(h('div', { class: 'gu-sub', text: 'Patterns we noticed' }));
+          if (!pats.length) body.appendChild(h('div', { class: 'note', text: 'Nothing to report this week. Keep playing and patterns will show up here.' }));
+          pats.forEach(function (x) {
+            body.appendChild(h('div', { class: 'note pattern' },
+              h('div', { text: x.text + ': ' + x.n + (x.n === 1 ? ' time' : ' times') + ' this week.' + (x.words.length ? ' (' + x.words.join(', ') + ')' : '') }),
+              h('div', { class: 'tip', text: 'Practice: ' + x.tip })));
+          });
+          // what to practice at home
+          var home = [];
+          if (pats.length) home.push(pats[0].tip);
+          if (tw.length) home.push('Read the ' + tw.length + ' tricky word' + (tw.length === 1 ? '' : 's') + ' together for two minutes.');
+          if (p.track === 'big') home.push('Read one short page aloud together every day: you read a line, then your child reads it back.');
+          else home.push('Point out a letter on a sign or a cereal box and say its sound.');
+          body.appendChild(h('div', { class: 'gu-sub', text: 'What to practice at home' }));
+          body.appendChild(h('ul', { class: 'gu-list' }, home.map(function (t) { return h('li', { text: t }); })));
           var q = d.quiz;
           body.appendChild(h('div', { style: 'font-weight:800;margin:10px 0 4px', text: "Captain's Challenge history" }));
           if (!q.length) body.appendChild(h('div', { text: 'No challenges yet.' }));
@@ -545,6 +655,330 @@
         else if (root.querySelector('.pick')) pickScreen(true);
       };
     });
+  }
+
+  /* ---------- Captain's Check-in (placement) ---------- */
+  // A playful ladder of short picture / word puzzles. Nothing is ever marked wrong: every tap gets the same friendly
+  // "thanks" and the result only decides where each skill starts (one rung lower than the best rung passed).
+  var CI = RG._checkin = {};
+  function arr(x) { return Array.isArray(x) ? x : []; }
+  function deck(list) { // endless shuffled draw without repeats until the list runs out
+    var bag = [];
+    return function () { if (!bag.length) bag = RG.shuffle(list); return bag.pop(); };
+  }
+  function emojiOf(w) { try { return RG.emojiFor(w) || ''; } catch (e) { return ''; } }
+  function levelWords(n) {
+    var C = RG.content || {}, pw = C.phonicsWords && C.phonicsWords[n];
+    if (arr(pw).length) return pw.filter(function (w) { return w.word && w.emoji; });
+    return arr(C.digraphWords).filter(function (w) { return (w.level || 1) === n && w.emoji; });
+  }
+  function pickDistractors(target, pool, n) {
+    var seen = {}; seen[target.emoji] = 1;
+    var cands = RG.shuffle(pool).filter(function (w) { if (!w.emoji || seen[w.emoji]) return false; seen[w.emoji] = 1; return true; });
+    var same = cands.filter(function (w) { return w.word.charAt(0) === target.word.charAt(0); });
+    var out = same.length ? [same[0]] : [];
+    cands.forEach(function (w) { if (out.length < n && out.indexOf(w) < 0) out.push(w); });
+    return out.slice(0, n);
+  }
+  function qWord(text, speak) { return h('div', { class: 'word ci-word', text: text }); }
+
+  function decodingRungs() {
+    var C = RG.content || {}, cvc = arr(C.cvcWords).filter(function (w) { return w.word && w.emoji; });
+    var l1 = levelWords(1), l2 = levelWords(2), l3 = levelWords(3), l4 = levelWords(4), l5 = levelWords(5);
+    var vce = l2.filter(function (w) { return /[aeiou][^aeiou]e$/.test(w.word); });
+    var blend = l2.filter(function (w) { return vce.indexOf(w) < 0; });
+    var all = cvc.concat(l1, l2, l3, l4, l5);
+    var defs = [[cvc, 1], [l1, 1], [blend, 2], [vce, 2], [l3, 3], [l4, 4], [l5, 5]];
+    defs = defs.filter(function (d) { return d[0].length >= 2; });
+    return defs.map(function (d, di) {
+      var next = deck(d[0]);
+      var near = []; defs.slice(Math.max(0, di - 1), di + 1).forEach(function (x) { near = near.concat(x[0]); }); // distractors from this rung and the one below
+      return { lvl: d[1], n: 3, need: 2, make: function () {
+        var t = next(), ds = pickDistractors(t, near.length >= 4 ? near : all, 2);
+        return { speak: 'Which picture goes with this word?', prompt: 'Which picture is this word?', show: qWord(t.word),
+          opts: RG.shuffle([t].concat(ds)).map(function (w) { return { emoji: w.emoji, correct: w === t, aria: 'picture' }; }) };
+      } };
+    });
+  }
+  var BLEND_ITEMS = {
+    1: [['flag', '🚩', ['flag', 'lag', 'flap']], ['clock', '⏰', ['clock', 'lock', 'cluck']], ['sled', '🛷', ['sled', 'led', 'shed']]],
+    2: [['frog', '🐸', ['frog', 'fog', 'fig']], ['crab', '🦀', ['crab', 'cab', 'cob']], ['truck', '🚚', ['truck', 'tuck', 'track']]],
+    3: [['lamp', '🪔', ['lamp', 'lap', 'lamb']], ['tent', '⛺', ['tent', 'ten', 'test']], ['nest', '🪺', ['nest', 'net', 'neck']]]
+  };
+  function blendRungs() {
+    return [1, 2, 3].map(function (lv) {
+      var next = deck(BLEND_ITEMS[lv]);
+      return { lvl: lv, n: 3, need: 2, make: function () {
+        var it = next();
+        return { speak: 'Which word goes with the picture?', prompt: 'Which word goes with the picture?', show: h('div', { class: 'big-emoji', text: it[1] }),
+          opts: RG.shuffle(it[2]).map(function (w) { return { label: w, correct: w === it[0], say: w, cls: 'wordopt' }; }) };
+      } };
+    });
+  }
+  var LONG_ITEMS = {
+    1: [['sunset', 'sun|set'], ['catfish', 'cat|fish'], ['cupcake', 'cup|cake']],
+    2: [['napkin', 'nap|kin'], ['rabbit', 'rab|bit'], ['basket', 'bas|ket']],
+    3: [['robot', 'ro|bot'], ['turtle', 'tur|tle'], ['tiger', 'ti|ger']],
+    5: [['octopus', 'oc|to|pus'], ['fantastic', 'fan|tas|tic'], ['butterfly', 'but|ter|fly']]
+  };
+  function wrongCuts(word, cuts) { // shift the first cut one letter either way to make plausible wrong splits
+    var out = [], first = cuts[0];
+    [first - 1, first + 1].forEach(function (c) {
+      if (c < 1 || c >= word.length - 1 || c === first) return;
+      var cc = [c].concat(cuts.slice(1));
+      if (cc.length > 1 && cc[1] <= c) return;
+      out.push(cc);
+    });
+    var extra = [word.length - 2];
+    if (cuts.length === 1 && extra[0] !== first && extra[0] > 0 && !out.some(function (o) { return o[0] === extra[0]; })) out.push(extra);
+    return out;
+  }
+  function cutLabel(word, cuts) {
+    var parts = [], last = 0;
+    cuts.forEach(function (c) { parts.push(word.slice(last, c)); last = c; });
+    parts.push(word.slice(last));
+    return parts.join(' | ');
+  }
+  function longRungs() {
+    return [1, 2, 3, 5].map(function (lv) {
+      var next = deck(LONG_ITEMS[lv]);
+      return { lvl: lv, n: 3, need: 2, make: function () {
+        var it = next(), word = it[0], good = it[1].split('|'), cuts = [], acc = 0;
+        good.slice(0, -1).forEach(function (g) { acc += g.length; cuts.push(acc); });
+        var wrongs = wrongCuts(word, cuts).slice(0, 2);
+        var opts = [{ label: cutLabel(word, cuts), correct: true, cls: 'wordopt' }].concat(wrongs.map(function (c) { return { label: cutLabel(word, c), correct: false, cls: 'wordopt' }; }));
+        return { speak: 'Where would you saw this word into chunks?', prompt: 'Where would you saw the word?', show: qWord(word), opts: RG.shuffle(opts) };
+      } };
+    });
+  }
+  function sightRungs() {
+    var C = RG.content || {}, sw = C.sightWords || {};
+    return [1, 2, 3, 4].map(function (lv) {
+      var list = arr(sw['level' + lv]).filter(function (w) { return w.length >= 3; });
+      if (lv === 1) list = list.slice(Math.floor(list.length / 2)); // the primer half of level 1
+      if (list.length < 4) list = ['they', 'what', 'want', 'with', 'said'];
+      var next = deck(list);
+      return { lvl: lv, n: 3, need: 2, make: function () {
+        var t = next(), ds = RG.shuffle(list.filter(function (w) { return w !== t; })).slice(0, 2);
+        return { speak: 'Find the word ' + t + '.', prompt: 'Find the word ' + t, show: null,
+          opts: RG.shuffle([t].concat(ds)).map(function (w) { return { label: w, correct: w === t, say: w, cls: 'wordopt' }; }) };
+      } };
+    });
+  }
+  function sentenceRungs() {
+    var C = RG.content || {}, all = arr(C.sentences).filter(function (s) { return s.text && s.emoji && arr(s.distractors).length >= 2; });
+    return [1, 2, 3, 4].map(function (lv) {
+      var list = all.filter(function (s) { return s.level === lv; });
+      if (list.length < 2) list = all.filter(function (s) { return Math.abs((s.level || 1) - lv) <= 1; });
+      if (!list.length) return null;
+      var next = deck(list);
+      return { lvl: lv, n: 3, need: 2, make: function () {
+        var s = next();
+        return { speak: 'Read the sentence. Which picture matches?', prompt: 'Read it. Which picture matches?', show: h('div', { class: 'ci-sentence', text: s.text }),
+          opts: RG.shuffle([{ emoji: s.emoji, correct: true }, { emoji: s.distractors[0], correct: false }, { emoji: s.distractors[1], correct: false }]) };
+      } };
+    }).filter(Boolean);
+  }
+  // little track
+  function letterRungs() {
+    var L = arr((RG.content || {}).letters).filter(function (x) { return x.letter; });
+    var starter = L.filter(function (x) { return 'satpinmd'.indexOf(x.letter) >= 0; });
+    var rest = L.filter(function (x) { return 'satpinmd'.indexOf(x.letter) < 0 && 'qx'.indexOf(x.letter) < 0; });
+    function mk(pool, lower, lvl) {
+      var next = deck(pool);
+      return { lvl: lvl, n: 2, need: 2, make: function () {
+        var t = next(), others = RG.shuffle(L.filter(function (x) { return x.letter !== t.letter; })).slice(0, 2);
+        function lab(x) { return lower ? x.letter : x.letter.toUpperCase(); }
+        return { speak: null, say: function () { return RG.speak('Find the letter').then(function () { return RG.sayLetter(t.letter); }); },
+          prompt: 'Find the letter ' + lab(t), show: null,
+          opts: RG.shuffle([t].concat(others)).map(function (x) { return { label: lab(x), correct: x === t, cls: 'letteropt', say: null, letter: x.letter }; }) };
+      } };
+    }
+    return [mk(starter, false, 1), mk(rest, false, 2), mk(L.filter(function (x) { return 'qx'.indexOf(x.letter) < 0; }), true, 3)];
+  }
+  function soundRungs() {
+    var L = arr((RG.content || {}).letters).filter(function (x) { return x.letter && x.sound; });
+    var easy = L.filter(function (x) { return 'smbtfn'.indexOf(x.letter) >= 0; });
+    var withPic = L.filter(function (x) { return x.emoji && x.word && x.word.charAt(0) === x.letter; });
+    function mkSound(pool, lvl) {
+      var next = deck(pool);
+      return { lvl: lvl, n: 2, need: 2, make: function () {
+        var t = next(), others = RG.shuffle(L.filter(function (x) { return x.letter !== t.letter && x.sound !== t.sound; })).slice(0, 2);
+        var q = 'Which letter says ' + t.sound + '?';
+        return { speak: q, prompt: q, show: null, opts: RG.shuffle([t].concat(others)).map(function (x) { return { label: x.letter.toUpperCase(), correct: x === t, cls: 'letteropt', letter: x.letter }; }) };
+      } };
+    }
+    function mkPic(pool, lvl) {
+      var next = deck(pool);
+      return { lvl: lvl, n: 2, need: 2, make: function () {
+        var t = next(), others = RG.shuffle(withPic.filter(function (x) { return x.letter !== t.letter && x.sound !== t.sound; })).slice(0, 2);
+        var q = t.word + '. What sound does ' + t.word + ' start with?';
+        return { speak: q, prompt: 'What sound does it start with?', show: h('div', { class: 'big-emoji', text: t.emoji }),
+          opts: RG.shuffle([t].concat(others)).map(function (x) { return { label: x.letter, correct: x === t, cls: 'letteropt', letter: x.letter }; }) };
+      } };
+    }
+    return [mkSound(easy.length >= 3 ? easy : L, 1), mkSound(L, 2), mkPic(withPic.length >= 4 ? withPic : L, 3)];
+  }
+  function rhymeRungs() {
+    var fam = (RG.content || {}).rhymeFamilies || {}, keys = Object.keys(fam);
+    var fams = keys.map(function (k) { return fam[k].filter(function (w) { return emojiOf(w); }); }).filter(function (f) { return f.length >= 2; });
+    if (fams.length < 3) return [];
+    function mk(pool, nOpts, lvl) {
+      var next = deck(pool);
+      return { lvl: lvl, n: 1, need: 1, make: function () {
+        var f = next(), two = RG.shuffle(f).slice(0, 2), target = two[0], right = two[1];
+        var others = [];
+        fams.forEach(function (g) { if (g !== f) others = others.concat(g); });
+        others = others.filter(function (w) { return f.indexOf(w) < 0; });
+        var wrong = RG.shuffle(others).slice(0, nOpts - 1);
+        var q = 'Which one rhymes with ' + target + '?';
+        return { speak: q, prompt: q, show: h('div', { class: 'big-emoji', text: emojiOf(target) }),
+          opts: RG.shuffle([right].concat(wrong)).map(function (w) { return { emoji: emojiOf(w), correct: w === right, say: null }; }) };
+      } };
+    }
+    var easyF = fams.filter(function (f) { return f.length >= 3; });
+    return [mk(easyF.length ? easyF : fams, 3, 1), mk(fams, 3, 2), mk(fams, 4, 3)];
+  }
+
+  function checkInPlan(track) {
+    function has(id) { return RG.games.some(function (g) { return g.id === id; }); }
+    var plan = [];
+    if (track === 'little') {
+      plan.push({ id: 'letters', skills: ['letters', 'writing'], rungs: letterRungs() });
+      plan.push({ id: 'sounds', skills: ['beginning-sounds', 'letter-sounds'], rungs: soundRungs() });
+      plan.push({ id: 'rhyme', skills: ['rhyme'], rungs: rhymeRungs() });
+    } else {
+      plan.push({ id: 'decode', skills: ['phonics'], rungs: decodingRungs(), main: true });
+      if (has('blend-cannon')) plan.push({ id: 'blends', skills: ['blends'], rungs: blendRungs() });
+      if (has('syllable-saw')) plan.push({ id: 'long', skills: ['long-words'], rungs: longRungs() });
+      plan.push({ id: 'sight', skills: ['sight-words'], rungs: sightRungs() });
+      plan.push({ id: 'sentence', skills: ['comprehension'], rungs: sentenceRungs() });
+    }
+    return plan.filter(function (l) { return l.rungs.length; });
+  }
+  // highest rung passed (2/2 style), then ONE RUNG LOWER so the first sessions feel easy
+  function levelFromLadder(rungs, passedIdx) {
+    if (passedIdx <= 0) return rungs[0] ? rungs[0].lvl : 1;
+    return rungs[passedIdx - 1].lvl;
+  }
+  CI.levelFromLadder = levelFromLadder;
+
+  function applyPlacement(prof, plan, passed) {
+    var levels = {}, phonicsLevel = 1;
+    plan.forEach(function (lad) {
+      var lv = levelFromLadder(lad.rungs, passed[lad.id]);
+      lad.skills.forEach(function (sk) { levels[sk] = lv; });
+      if (lad.main) phonicsLevel = lv;
+    });
+    if (prof.track === 'big') { // unmeasured skills follow phonics
+      ['fluency', 'real-world', 'quiz', 'rhyme'].forEach(function (sk) { if (levels[sk] == null) levels[sk] = phonicsLevel; });
+      ['blends', 'long-words'].forEach(function (sk) { if (levels[sk] == null) levels[sk] = phonicsLevel; });
+    } else {
+      var l = levels.letters || 1;
+      ['quiz', 'real-world', 'signs'].forEach(function (sk) { if (levels[sk] == null) levels[sk] = l; });
+    }
+    Object.keys(levels).forEach(function (sk) { RG.progress.setLevel(sk, levels[sk], prof.id); });
+    RG.progress.set('checkin', { at: new Date().toISOString(), passed: passed, levels: levels });
+    RG.progress.setPlaced(true, prof.id);
+    return levels;
+  }
+
+  var THANKS = ['Thanks, Captain!', 'Got it!', 'On we sail!', 'Nice sailing!', 'Thank you!', 'Ahoy!'];
+  function checkIn() {
+    var prof = RG.profile(), tok0, plan = checkInPlan(prof.track), alive = true;
+    var passed = {};
+    plan.forEach(function (l) { passed[l.id] = -1; });
+    var li = 0, ri = 0, asked = 0, right = 0, miss = 0, locked = false;
+
+    function skip() { alive = false; RG.progress.setPlaced(true); mapScreen(true); }
+    var skipBtn = holdGate(h('button', { class: 'btn small ci-skip', type: 'button', 'aria-label': 'Grown-ups: hold for 3 seconds to skip the check-in' }, '⏭ Grown-ups: hold to skip'),
+      skip, 'Grown-ups: hold the button for 3 seconds to skip');
+
+    function frame(inner) {
+      var stop = Math.min(li + 1, plan.length);
+      var s = h('div', { class: 'screen ci' },
+        h('div', { class: 'ci-top' }, h('div', { class: 'pill' }, '🧭 Check-in'),
+          press(h('button', { class: 'iconbtn ci-replay', type: 'button', 'aria-label': 'Say it again', text: '🔊' }), function () { if (RG._ciReplay) RG._ciReplay(); }),
+          h('div', { class: 'ci-stops', role: 'progressbar', 'aria-valuemax': plan.length, 'aria-valuenow': stop },
+            plan.map(function (l, i) { return h('span', { class: 'ci-stop' + (i < li ? ' done' : (i === li ? ' now' : '')), text: i < li ? '🏝️' : (i === li ? '⛵' : '·') }); }))),
+        h('div', { class: 'ci-body' }, inner),
+        h('div', { class: 'ci-foot' }, skipBtn));
+      show(s);
+      tok0 = screenToken;
+    }
+
+    function intro() {
+      frame(h('div', { class: 'ci-card' },
+        h('div', { class: 'ci-emoji', text: '🧭' }),
+        h('h2', { text: "Captain's Check-in" }),
+        h('div', { class: 'ci-text', text: "Let's find the best islands for you! Tap what you think. There are no wrong answers." }),
+        press(h('button', { class: 'btn primary', id: 'ci-start', type: 'button', text: "⛵ Let's go!" }), function () { RG.unlockAudio(); nextQuestion(true); })));
+      RG.speak("Ahoy, " + prof.name + "! Let's find the best islands for you. There are no wrong answers!", { mood: 'happy' });
+    }
+
+    function startRung() { asked = 0; right = 0; miss = 0; }
+    function nextQuestion(first) {
+      if (!alive) return;
+      if (first) { li = 0; ri = 0; startRung(); }
+      var lad = plan[li];
+      if (!lad) { finish(); return; }
+      var rung = lad.rungs[ri];
+      if (!rung) { li++; ri = 0; startRung(); nextQuestion(); return; }
+      var q = rung.make();
+      locked = false;
+      var choices = h('div', { class: 'choices ci-choices' });
+      q.opts.forEach(function (o) {
+        var b = h('button', { class: 'choice ci-opt ' + (o.cls || ''), type: 'button', 'aria-label': o.aria || o.label || o.emoji, dataset: { ok: o.correct ? '1' : '0' } },
+          o.emoji ? h('span', { class: 'ci-oe', text: o.emoji }) : null, o.label ? h('span', { class: 'ci-ol', text: o.label }) : null);
+        b.addEventListener('click', function () {
+          if (locked || !alive) return; locked = true;
+          RG.sfx.pop();
+          Array.prototype.forEach.call(choices.querySelectorAll('button'), function (x) { x.disabled = true; });
+          b.classList.add('picked');
+          asked++; if (o.correct) right++; else miss++;
+          var thanks = RG.sample(THANKS);
+          RG.speak(thanks, { mood: 'happy' });
+          var tk = tok0;
+          RG.wait(850).then(function () { if (!alive || tk !== screenToken) return; afterAnswer(); });
+        });
+        choices.appendChild(b);
+      });
+      var tk2 = h('div', { class: 'prompt ci-prompt', text: q.prompt });
+      frame(h('div', { class: 'ci-q' }, tk2, q.show ? h('div', { class: 'ci-show' }, q.show) : null, choices));
+      replay = function () { return q.say ? q.say() : RG.speak(q.speak || q.prompt); };
+      replay();
+    }
+    var replay = null;
+
+    function afterAnswer() {
+      var lad = plan[li], rung = lad.rungs[ri];
+      var done = false;
+      if (right >= rung.need) { passed[lad.id] = ri; ri++; startRung(); done = false; }
+      else if (miss > rung.n - rung.need || asked >= rung.n) { li++; ri = 0; startRung(); done = true; }
+      void done;
+      nextQuestion();
+    }
+
+    function finish() {
+      alive = false;
+      var levels = applyPlacement(prof, plan, passed);
+      void levels;
+      try { RG.coins.add(5, 'check-in'); } catch (e) { /* ignore */ }
+      var s = h('div', { class: 'screen ci' },
+        h('div', { class: 'ci-body' }, h('div', { class: 'ci-card' },
+          h('div', { class: 'ci-emoji bounce', text: '🏝️' }),
+          h('h2', { text: 'All set, Captain!' }),
+          h('div', { class: 'ci-text', text: 'I picked islands that fit you just right. Time to sail!' }),
+          press(h('button', { class: 'btn primary', id: 'ci-done', type: 'button', text: '🗺️ To the map!' }), function () { mapScreen(true); }))));
+      show(s);
+      RG.sfx.win(); RG.celebrate();
+      RG.speak("All set, captain! I picked islands that fit you just right.", { mood: 'excited' });
+    }
+
+    if (!plan.length) { RG.progress.setPlaced(true); mapScreen(true); return; }
+    intro();
+    // expose the repeat button for the 🔊 helper in the check-in
+    RG._ciReplay = function () { if (replay) replay(); };
   }
 
   /* ---------- go ---------- */

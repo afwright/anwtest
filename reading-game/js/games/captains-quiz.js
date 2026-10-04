@@ -1,5 +1,7 @@
-/* Captain's Challenge - a friendly mixed quiz (10 questions) generated from RG.content.
-   One try per question, kind reveal, trophy screen with islands to practice. */
+/* Captain's Challenge - a friendly mixed quiz generated from RG.content (6 questions little track, 10 big track).
+   One try per question, kind reveal, trophy screen with islands to practice.
+   Big track: every question comes from that skill's current level (never below 2), always includes blend (minimal pair)
+   and long-word questions, and mixes in Tricky Words. */
 (function () {
   'use strict';
   var RG = window.RG;
@@ -14,6 +16,7 @@
 .cq-show{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
 .cq-bigword{font-size:2.6rem;font-weight:800;letter-spacing:.12em;background:#fff;border:4px solid #4cc3ff;border-radius:18px;padding:8px 22px}
 .cq-sentence{font-size:1.6rem;font-weight:800;line-height:1.5;background:#fff;border:4px solid #4cc3ff;border-radius:18px;padding:10px 18px;letter-spacing:.03em}
+.cq-chunks{font-size:1.9rem;font-weight:800;letter-spacing:.08em;background:#fff3d1;border:4px dashed #c9a35a;border-radius:16px;padding:4px 18px}
 .cq-blank{display:inline-block;min-width:80px;border-bottom:5px solid #ff8c42;margin:0 4px}
 .cq-passage{text-align:left;background:#fff3d1;border:3px solid #c9a35a;border-radius:8px 16px 10px 18px;padding:12px 16px;font-size:1.25rem;line-height:1.5;font-weight:700;width:100%;box-sizing:border-box;box-shadow:inset 0 0 18px rgba(201,163,90,.5)}
 .cq-passage p{margin:2px 0}
@@ -106,17 +109,19 @@
     'letter-pop': { title: 'Letter Pop', emoji: '🎈' }, 'sound-hunt': { title: 'Sound Hunt', emoji: '🔍' },
     'rhyme-boat': { title: 'Rhyme Boat', emoji: '⛵' }, 'word-builder': { title: 'Word Builder', emoji: '🧱' },
     'sight-fishing': { title: 'Sight Fishing', emoji: '🎣' }, 'sentence-match': { title: 'Sentence Match', emoji: '🖼️' },
-    'story-cove': { title: 'Story Cove', emoji: '📖' }, 'reading-quest': { title: 'Reading Quest', emoji: '🗺️' }
+    'story-cove': { title: 'Story Cove', emoji: '📖' }, 'reading-quest': { title: 'Reading Quest', emoji: '🗺️' },
+    'blend-cannon': { title: 'Blend Cannon', emoji: '💣' }, 'syllable-saw': { title: 'Syllable Saw', emoji: '🪚' }
   };
   var SKILL_ISLANDS = {
     letters: ['letter-pop'], 'letter-sounds': ['letter-pop', 'sound-hunt'], 'beginning-sounds': ['sound-hunt'],
     rhyme: ['rhyme-boat'], signs: ['reading-quest'], decoding: ['word-builder'], 'sight-words': ['sight-fishing'],
-    sentences: ['sentence-match'], comprehension: ['story-cove'], 'real-world': ['reading-quest']
+    sentences: ['sentence-match'], comprehension: ['story-cove'], 'real-world': ['reading-quest'],
+    blends: ['blend-cannon'], 'long-words': ['syllable-saw']
   };
   var SKILL_NAMES = {
     letters: 'letters', 'letter-sounds': 'letter sounds', 'beginning-sounds': 'first sounds', rhyme: 'rhymes',
     signs: 'signs', decoding: 'reading words', 'sight-words': 'sight words', sentences: 'sentences',
-    comprehension: 'stories', 'real-world': 'real-world reading'
+    comprehension: 'stories', 'real-world': 'real-world reading', blends: 'blends', 'long-words': 'long words'
   };
 
   /* ---------------- helpers ---------------- */
@@ -169,8 +174,10 @@
 
   /* ---------------- question builders ---------------- */
   // Each returns {skill, prompt, ask(), show, opts:[{label,emoji,cls,correct,say}], reveal}
-  function Gen(track, level) {
-    var used = {};
+  function Gen(track, level, lvOf) {
+    var used = {}, usedTricky = {};
+    // big track: the skill's own current level, never below 2 so the Challenge is never trivial
+    function lv(skill) { return track === 'big' && lvOf ? Math.max(2, lvOf(skill)) : level; }
     function fresh(key) { if (used[key]) { return false; } used[key] = 1; return true; }
     function letterCase(l) { return (track === 'little' && level >= 3) ? l.toLowerCase() : l.toUpperCase(); }
 
@@ -247,39 +254,77 @@
       });
       return { skill: 'signs', prompt: q, ask: function () { return say('Which sign says ' + t.w + '?'); }, opts: opts, reveal: t.w };
     };
+    function allPhonics() {
+      var pw = C().phonicsWords, out = [];
+      if (pw && typeof pw === 'object') { Object.keys(pw).forEach(function (k) { arr(pw[k]).forEach(function (w) { if (w && w.word && w.emoji) { out.push(w); } }); }); }
+      return out;
+    }
+    function trickyList(skills) {
+      var out = [];
+      try { out = (RG.progress && RG.progress.tricky && RG.progress.tricky.list ? RG.progress.tricky.list() : []).filter(function (t) { return skills.indexOf(t.skill) >= 0; }); } catch (e) { out = []; }
+      return out;
+    }
+    function phonicsPool(L) {
+      var pw = C().phonicsWords, out = [];
+      if (pw && typeof pw === 'object') {
+        [L - 1, L].forEach(function (n) { arr(pw[n]).forEach(function (w) { if (w && w.word && w.emoji) { out.push(w); } }); });
+      }
+      if (out.length < 8) { out = cvcList().concat(digraphList()); }
+      var seenE = {}; return out.filter(function (x) { if (seenE[x.emoji]) { return false; } seenE[x.emoji] = 1; return true; });
+    }
     G.decoding = function () {
-      var pool = level === 1 ? cvcList() : (level === 2 ? digraphList() : digraphList().concat(cvcList()));
-      var seenE = {}, uniq = pool.filter(function (x) { if (seenE[x.emoji]) { return false; } seenE[x.emoji] = 1; return true; });
-      var t, tries = 0;
-      do { t = sample(uniq); tries++; } while (!fresh('D' + t.word) && tries < 30);
+      var uniq, t, tries = 0;
+      if (track === 'big') {
+        var L = Math.min(5, lv('phonics'));
+        uniq = phonicsPool(L);
+        var every = allPhonics(), tr = trickyList(['phonics', 'blends', 'long-words']).map(function (x) {
+          return every.filter(function (w) { return w.word === x.word; })[0];
+        }).filter(Boolean);
+        if (tr.length && !usedTricky.dec) { usedTricky.dec = 1; t = sample(tr); if (!uniq.some(function (x) { return x.emoji === t.emoji; })) { uniq = uniq.concat([t]); } }
+      } else {
+        var pool = level === 1 ? cvcList() : (level === 2 ? digraphList() : digraphList().concat(cvcList()));
+        var seenE = {}; uniq = pool.filter(function (x) { if (seenE[x.emoji]) { return false; } seenE[x.emoji] = 1; return true; });
+      }
+      if (!t) { do { t = sample(uniq); tries++; } while (!fresh('D' + t.word) && tries < 30); } else { fresh('D' + t.word); }
       var wrong = pick(uniq.filter(function (x) { return x.emoji !== t.emoji; }), 2);
       var opts = shuffle([t].concat(wrong)).map(function (x) {
         return { emoji: x.emoji, cls: 'cq-wide', correct: x === t, say: x.word, aria: x.word };
       });
       var q = 'Read the word. Which picture matches?';
       return { skill: 'decoding', prompt: q, ask: function () { return say(q); },
-        show: el('div', 'cq-bigword word', t.word), opts: opts, reveal: t.word };
+        show: el('div', 'cq-bigword word', t.word), opts: opts, reveal: t.word, word: t.word, tskill: 'phonics' };
     };
     G['sight-words'] = function () {
       var sw = C().sightWords || FB_SIGHT;
-      var pool = [];
-      for (var i = 1; i <= level; i++) { pool = pool.concat(arr(sw['level' + i])); }
+      var pool = [], i, L = lv('sight-words');
+      if (track === 'big') {
+        pool = arr(sw['level' + Math.min(5, L)]).filter(function (w) { return w.length >= 3; });   // the skill's own level list, not the easy ones below
+        if (pool.length < 12) { pool = pool.concat(arr(sw['level' + Math.max(1, L - 1)]).filter(function (w) { return w.length >= 3; })); }
+      } else {
+        for (i = 1; i <= level; i++) { pool = pool.concat(arr(sw['level' + i])); }
+      }
       if (pool.length < 6) { pool = FB_SIGHT.level1.concat(FB_SIGHT.level2); }
       var seenW = {}; pool = pool.filter(function (w) { var k = w.toLowerCase(); if (seenW[k]) { return false; } seenW[k] = 1; return true; });
-      var t, tries = 0;
-      do { t = sample(pool); tries++; } while (!fresh('W' + t.toLowerCase()) && tries < 30);
+      var t = null, tries = 0;
+      if (track === 'big' && !usedTricky.sw) {
+        var tr = trickyList(['sight-words']).map(function (x) { return x.word; }).filter(function (w) { return w.length >= 2; });
+        if (tr.length) { usedTricky.sw = 1; t = sample(tr); if (pool.map(function (w) { return w.toLowerCase(); }).indexOf(t) < 0) { pool = pool.concat([t]); } }
+      }
+      if (!t) { do { t = sample(pool); tries++; } while (!fresh('W' + t.toLowerCase()) && tries < 30); }
       var wrong = pick(pool.filter(function (w) { return w.toLowerCase() !== t.toLowerCase(); }), 3);
       var opts = shuffle([t].concat(wrong)).map(function (w) {
         return { label: w, cls: 'cq-wordopt cq-wide', correct: w === t, say: w, aria: w };
       });
       var q = 'Find the word ' + t + '!';
-      return { skill: 'sight-words', prompt: q, ask: function () { return say(q); }, opts: opts, reveal: t };
+      return { skill: 'sight-words', prompt: q, ask: function () { return say(q); }, opts: opts, reveal: t, word: t, tskill: 'sight-words' };
     };
     G.sentences = function () {
       var all = arr(C().sentences).filter(function (s) { return s && s.text && s.emoji; });
       if (all.length < 4) { all = FB_SENT; }
-      var okLvl = all.filter(function (s) { return (s.level || 1) <= level; });
-      var cands = shuffle(okLvl.length >= 3 ? okLvl : all);
+      var SL = track === 'big' ? lv('comprehension') : level;
+      var exact = all.filter(function (s) { return (s.level || 1) === SL; });
+      var okLvl = all.filter(function (s) { return (s.level || 1) <= SL; });
+      var cands = shuffle(track === 'big' && exact.length >= 3 ? exact : (okLvl.length >= 3 ? okLvl : all));
       var found = null, blankIdx = -1;
       for (var i = 0; i < cands.length && !found; i++) {
         var words = cands[i].text.split(' ');
@@ -322,9 +367,22 @@
     G.comprehension = function () {
       var all = arr(C().stories).filter(function (s) { return s && arr(s.pages).length && arr(s.questions).length; });
       if (!all.length) { all = [FB_STORY]; }
-      var okLvl = all.filter(function (s) { return (s.level || 1) <= level; });
-      var story = sample(okLvl.length ? okLvl : all);
-      var qq = sample(story.questions);
+      var CL = track === 'big' ? lv('fluency') : level, story;
+      if (track === 'big') {
+        var near = all.filter(function (s) { return s.level === CL || s.level === CL - 1; });
+        function wc(s) { return s.pages.reduce(function (n, p) { return n + String(p.text).split(' ').length; }, 0); }
+        var short = near.filter(function (s) { return wc(s) <= 130; });
+        story = sample(short.length ? short : (near.length ? near : all));
+      } else {
+        var okLvl = all.filter(function (s) { return (s.level || 1) <= CL; });
+        story = sample(okLvl.length ? okLvl : all);
+      }
+      var pool = story.questions;
+      if (track === 'big' && CL >= 3) { // from level 3 up prefer why / sequence / vocab / inference questions
+        var deeper = pool.filter(function (x) { return x.type && x.type !== 'literal'; });
+        if (deeper.length) { pool = deeper; }
+      }
+      var qq = sample(pool);
       var show = el('div', 'cq-passage');
       story.pages.forEach(function (p) { show.appendChild(el('p', '', p.text)); });
       var opts = shuffle(arr(qq.options)).map(function (o) {
@@ -336,6 +394,75 @@
       wrap.appendChild(el('div', 'prompt cq-prompt', qq.q));
       return { skill: 'comprehension', prompt: 'Read the story. Then answer the question.', ask: function () { return say(q); },
         show: wrap, opts: opts, reveal: String(qq.answer) };
+    };
+    // ---- big track: blends (minimal pairs: the typical error is dropping a consonant, frog -> fog) ----
+    var BL_A = [['flag', '🚩', 'lag', 'flap'], ['clock', '⏰', 'lock', 'cluck'], ['sled', '🛷', 'led', 'shed'], ['frog', '🐸', 'fog', 'fig'],
+      ['crab', '🦀', 'cab', 'cob'], ['truck', '🚚', 'tuck', 'track']];
+    var BL_B = [['lamp', '🪔', 'lap', 'lamb'], ['tent', '⛺', 'ten', 'test'], ['nest', '🪺', 'net', 'neck'], ['plant', '🪴', 'pant', 'plan'],
+      ['hand', '✋', 'had', 'hang'], ['sand', '🏖️', 'sad', 'sang']];
+    var BL_C = [['star', '⭐', 'tar', 'scar'], ['snail', '🐌', 'nail', 'sail'], ['spoon', '🥄', 'soon', 'moon'], ['skunk', '🦨', 'sunk', 'skull'],
+      ['snake', '🐍', 'sake', 'snack'], ['clown', '🤡', 'down', 'crown']];
+    G.blends = function () {
+      var L = lv('blends'), pool = L <= 2 ? BL_A : (L === 3 ? BL_B.concat(BL_A.slice(0, 2)) : BL_B.concat(BL_C));
+      var it, tries = 0;
+      var trs = trickyList(['blends']).map(function (x) { return x.word; });
+      var all = BL_A.concat(BL_B, BL_C), fromT = all.filter(function (x) { return trs.indexOf(x[0]) >= 0; });
+      if (fromT.length && !usedTricky.bl) { usedTricky.bl = 1; it = sample(fromT); }
+      else { do { it = sample(pool); tries++; } while (!fresh('B' + it[0]) && tries < 20); }
+      var opts = shuffle([{ w: it[0], ok: true }, { w: it[2], err: 'dropped-consonant' }, { w: it[3] }]).map(function (x) {
+        return { label: x.w, cls: 'cq-wordopt cq-wide', correct: !!x.ok, say: x.w, aria: x.w, errType: x.err };
+      });
+      var q = 'Read the words. Which word goes with the picture?';
+      return { skill: 'blends', prompt: q, ask: function () { return say(q); }, show: el('div', 'big-emoji', it[1]),
+        opts: opts, reveal: it[0], word: it[0], tskill: 'blends' };
+    };
+    // ---- big track: long words (pick the picture for a 2-syllable word, or which chunk comes next) ----
+    var longToggle = 0;
+    function longPool(L) {
+      var pw = arr((C().phonicsWords || {})[5]).filter(function (w) { return w && w.word && w.emoji && arr(w.tiles).length >= 2; });
+      if (pw.length < 6) { pw = [{ word: 'sunset', emoji: '🌅', tiles: ['sun', 'set'] }, { word: 'rabbit', emoji: '🐰', tiles: ['rab', 'bit'] },
+        { word: 'cupcake', emoji: '🧁', tiles: ['cup', 'cake'] }, { word: 'basket', emoji: '🧺', tiles: ['bas', 'ket'] },
+        { word: 'popcorn', emoji: '🍿', tiles: ['pop', 'corn'] }, { word: 'backpack', emoji: '🎒', tiles: ['back', 'pack'] }]; }
+      var n = Math.min(pw.length, L <= 2 ? 9 : (L === 3 ? 13 : (L === 4 ? 18 : pw.length)));
+      return pw.slice(0, Math.max(6, n));
+    }
+    function swapVowel(chunk) {
+      var vs = 'aeiou', out = [];
+      for (var i = 0; i < chunk.length; i++) {
+        if (vs.indexOf(chunk.charAt(i)) >= 0) {
+          vs.split('').forEach(function (v) { if (v !== chunk.charAt(i)) { out.push(chunk.slice(0, i) + v + chunk.slice(i + 1)); } });
+          break;
+        }
+      }
+      return out;
+    }
+    G['long-words'] = function () {
+      var L = lv('long-words'), pool = longPool(L), t, tries = 0, mode = (longToggle++ % 2 === 0) ? 'pic' : 'chunk';
+      var trs = trickyList(['long-words']).map(function (x) { return x.word; });
+      var fromT = pool.filter(function (x) { return trs.indexOf(x.word) >= 0; });
+      if (fromT.length && !usedTricky.lw) { usedTricky.lw = 1; t = sample(fromT); }
+      else { do { t = sample(pool); tries++; } while (!fresh('LW' + mode + t.word) && tries < 30); }
+      if (mode === 'pic') {
+        var wrong = pick(pool.filter(function (x) { return x.emoji !== t.emoji; }), 2);
+        var opts = shuffle([t].concat(wrong)).map(function (x) { return { emoji: x.emoji, cls: 'cq-wide', correct: x === t, say: x.word, aria: x.word }; });
+        var q = 'Read the long word. Which picture matches?';
+        return { skill: 'long-words', prompt: q, ask: function () { return say(q); }, show: el('div', 'cq-bigword word', t.word),
+          opts: opts, reveal: t.word, word: t.word, tskill: 'long-words' };
+      }
+      var k = 1 + Math.floor(Math.random() * (t.tiles.length - 1)), ans = t.tiles[k];
+      var shown = t.tiles.slice(0, k).concat(['?']).join(' | ');
+      var ds = swapVowel(ans).filter(function (d) { return d !== ans; });
+      var others = [];
+      pool.forEach(function (x) { if (x.word !== t.word && x.tiles[k] && x.tiles[k] !== ans && others.indexOf(x.tiles[k]) < 0) { others.push(x.tiles[k]); } });
+      var wrongs = shuffle(ds).slice(0, 1).concat(shuffle(others).slice(0, 2)).filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(0, 2);
+      while (wrongs.length < 2) { wrongs.push(ans + 'x'); }
+      var opts2 = shuffle([ans].concat(wrongs)).map(function (c) { return { label: c, cls: 'cq-wordopt cq-wide', correct: c === ans, say: c, aria: c }; });
+      var show = el('div', 'cq-show');
+      show.appendChild(el('div', 'cq-bigword word', t.word));   // no picture here: this one is pure reading
+      show.appendChild(el('div', 'cq-chunks', shown));
+      var q2 = 'Which chunk comes next?';
+      return { skill: 'long-words', prompt: q2, ask: function () { return say(t.word + '. ' + q2); }, show: show,
+        opts: opts2, reveal: ans, word: t.word, tskill: 'long-words' };
     };
     G['real-world'] = function () {
       var r = sample(REAL), tries = 0;
@@ -358,25 +485,38 @@
 
   var PLAN = {
     little: ['letters', 'letter-sounds', 'beginning-sounds', 'rhyme', 'signs'],
-    big: ['decoding', 'sight-words', 'sentences', 'rhyme', 'comprehension', 'real-world']
+    big: ['decoding', 'sight-words', 'sentences', 'comprehension', 'real-world', 'rhyme']
   };
-  var BIG_EXTRA = ['decoding', 'sight-words', 'sentences', 'real-world'];
+  // every big-track run asks at least 2 blend questions and 2 long-word questions
+  var BIG_MUST = ['blends', 'long-words', 'blends', 'long-words'];
+
+  function skillLevel(skill) {
+    var l = 1;
+    try { l = RG.progress && RG.progress.level ? RG.progress.level(skill) : 1; } catch (e) { l = 1; }
+    return l || 1;
+  }
 
   function buildQuiz(track, level, total) {
-    var G = Gen(track, level);
-    var types = PLAN[track].slice();
-    var seq = [];
+    var G = Gen(track, level, skillLevel);
+    var seq = [], types = PLAN[track].slice();
     if (track === 'little') {
       while (seq.length < total) {
         var round = shuffle(types);
         if (seq.length && round[0] === seq[seq.length - 1]) { round.push(round.shift()); }
         seq = seq.concat(round);
       }
+      seq = seq.slice(0, total);
     } else {
-      seq = shuffle(types).concat(shuffle(BIG_EXTRA));
-      while (seq.length < total) { seq = seq.concat(shuffle(types)); }
+      var must = BIG_MUST.slice(0, Math.min(BIG_MUST.length, total));
+      var rest = [];
+      while (rest.length < total - must.length) { rest = rest.concat(shuffle(types)); }
+      seq = shuffle(must.concat(rest.slice(0, total - must.length)));
+      for (var i = 1; i < seq.length; i++) { // no two of the same kind in a row when it can be avoided
+        if (seq[i] === seq[i - 1]) {
+          for (var j = i + 1; j < seq.length; j++) { if (seq[j] !== seq[i] && seq[j] !== seq[i - 1]) { var tmp = seq[i]; seq[i] = seq[j]; seq[j] = tmp; break; } }
+        }
+      }
     }
-    seq = seq.slice(0, total);
     var qs = [];
     seq.forEach(function (t) {
       var q = null;
@@ -394,8 +534,8 @@
     emoji: '🏆',
     tracks: ['little', 'big'],
     skill: 'quiz',
-    rounds: 10,
-    blurb: "Show what you know in the Captain's Challenge! Ten questions, and a trophy to win!",
+    rounds: function (profile) { return profile && profile.track === 'little' ? 6 : 10; },   // 6 for the little track, 10 for the big track
+    blurb: "Show what you know in the Captain's Challenge! Win a trophy!",
     mount: function (container, ctx) {
       if (!document.getElementById(STYLE_ID)) {
         var st = document.createElement('style');
@@ -403,7 +543,7 @@
       }
       var track = (ctx.profile && ctx.profile.track === 'big') ? 'big' : 'little';
       var level = ctx.level || 1;
-      var total = ctx.rounds || 10;
+      var total = ctx.rounds || (track === 'big' ? 10 : 6);
       var alive = true, timers = [], listeners = [];
       var qs = buildQuiz(track, level, total);
       total = qs.length;
@@ -465,6 +605,10 @@
         var ok = !!o.correct;
         try { ctx.answer(ok); } catch (e) { /* ignore */ }
         if (ok) { score++; }
+        if (q.word && RG.progress && RG.progress.tricky) { // spaced review: a miss joins the Tricky Words list, a hit counts toward leaving it
+          try { if (ok) { RG.progress.tricky.correct(q.word); } else { RG.progress.tricky.add(q.word, q.tskill || q.skill); } } catch (e4) { /* ignore */ }
+        }
+        if (!ok && o.errType && RG.progress && RG.progress.recordError) { try { RG.progress.recordError(q.skill, o.errType, q.word || q.reveal); } catch (e5) { /* ignore */ } }
         var rec = bySkill[q.skill] || (bySkill[q.skill] = [0, 0]);
         rec[1]++; if (ok) { rec[0]++; }
         var btns = choices.querySelectorAll('.cq-opt');
@@ -517,8 +661,8 @@
         root.innerHTML = '';
         var tier, title, bonus;
         if (score >= total && total > 0) { tier = '🥇'; title = 'Gold Trophy!'; bonus = 10; }
-        else if (score >= 8) { tier = '🥈'; title = 'Silver Trophy!'; bonus = 5; }
-        else if (score >= 6) { tier = '🥉'; title = 'Bronze Trophy!'; bonus = 2; }
+        else if (score >= Math.ceil(total * 0.8)) { tier = '🥈'; title = 'Silver Trophy!'; bonus = 5; }
+        else if (score >= Math.ceil(total * 0.6)) { tier = '🥉'; title = 'Bronze Trophy!'; bonus = 2; }
         else { tier = '⭐'; title = 'Brave Sailor!'; bonus = 0; }
         if (bonus > 0 && ctx.award) { try { ctx.award(bonus, "Captain's Challenge trophy"); } catch (e) { /* ignore */ } }
         // practice islands from missed skills

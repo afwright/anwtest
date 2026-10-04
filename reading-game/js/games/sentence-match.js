@@ -20,10 +20,11 @@
     '.sm-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(74,163,255,.45);pointer-events:none;}',
     '.sm-read.sm-wait .sm-fill{animation:sm-fill ' + (WAIT_MS / 1000) + 's linear forwards;}',
     '@keyframes sm-fill{from{width:0}to{width:100%}}',
-    '.sm-read-label{position:relative;}',
+    '.sm-read-label{position:relative;font-size:1.1rem;}',
     '.sm-read.sm-ready{animation:sm-ready .8s ease 2;}',
     '@keyframes sm-ready{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}',
     '.sm-choices{gap:14px;}',
+    '.sm-pic.sm-dim{opacity:.3;}',
     '.sm-pic{font-size:3.6rem;line-height:1;min-width:104px;min-height:104px;padding:8px 12px;}',
     '@media (max-width:480px){.sm-choices{gap:10px;}.sm-pic{font-size:3rem;min-width:94px;min-height:94px;padding:6px;}}'
   ].join('\n');
@@ -57,24 +58,52 @@
     { text: 'the sun is hot. i will wear my hat.', emoji: '\u2600\uFE0F', distractors: ['\uD83C\uDF19', '\u2744\uFE0F'], level: 3 }
   ];
 
+  LOCAL.push(
+    { text: 'the star is far. it is in the dark sky.', emoji: '⭐', distractors: ['🌞', '🌳'], level: 4 },
+    { text: 'the shark swam past the barn dock. the boy ran.', emoji: '🦈', distractors: ['🐮', '🐟'], level: 4 },
+    { text: 'a bird sat in the corn. it was a hot day.', emoji: '🐦', distractors: ['🐮', '🐟'], level: 4 },
+    { text: 'the coin fell from the boy. clink!', emoji: '🪙', distractors: ['🍎', '🔑'], level: 4 },
+    { text: 'mia zipped her coat. flakes fell all night.', emoji: '❄️', distractors: ['☀️', '🌈'], level: 5, hint: 'flakes fall from the sky when it is snowing.' },
+    { text: 'jack got his mitts and a hat. he ran to the hill with a sled.', emoji: '🛷', distractors: ['🏖️', '🚲'], level: 5, hint: 'a sled is for sliding down a snowy hill.' },
+    { text: 'the pot is on the stove. it is going bubble, bubble, pop. the cook sniffs.', emoji: '🍲', distractors: ['🛁', '🌊'], level: 5, hint: 'a cook, a stove and a pot mean soup.' },
+    { text: 'drip, drip, drip. the sky is dark. ben gets his umbrella.', emoji: '🌧️', distractors: ['🌞', '🌈'], level: 5, hint: 'you need an umbrella when it rains.' },
+    { text: 'the crowd cheers. the boy kicks the ball past the net.', emoji: '⚽', distractors: ['🏀', '🎾'], level: 5, hint: 'a ball and a net: it is a soccer game.' }
+  );
+
   function clean(w) { return String(w).toLowerCase().replace(/[^a-z0-9']/g, ''); }
 
   function validSentence(s) {
     return s && typeof s.text === 'string' && s.text && s.emoji;
   }
 
+  function levelsOf(list) {
+    var seen = {}, out = [];
+    list.forEach(function (x) { var l = x.level || 1; if (!seen[l]) { seen[l] = 1; out.push(l); } });
+    return out.sort(function (x, y) { return x - y; });
+  }
+  function resolveLevel(avail, level) {
+    if (!avail.length) { return 0; }
+    if (avail.indexOf(level) >= 0) { return level; }
+    var lower = avail.filter(function (n) { return n < level; });
+    return lower.length ? lower[lower.length - 1] : avail[0];
+  }
+
   function buildPool(level, rounds) {
     var all = (RG.content && RG.content.sentences || []).filter(validSentence);
     var local = LOCAL.filter(validSentence);
-    var pool = all.filter(function (s) { return (s.level || 1) === level; });
-    pool = RG.shuffle(pool);
+    var lv = resolveLevel(levelsOf(all), level);
+    var pool = RG.shuffle(all.filter(function (s) { return (s.level || 1) === lv; }));
     var seen = {};
     pool.forEach(function (s) { seen[s.text] = true; });
-    var more = RG.shuffle(local.filter(function (s) { return s.level === level && !seen[s.text]; }));
-    if (pool.length < rounds) { pool = pool.concat(more); }
     if (pool.length < rounds) {
-      var near = all.filter(function (s) { return !seen[s.text] && Math.abs((s.level || 1) - level) === 1; });
-      pool = pool.concat(RG.shuffle(near));
+      var more = RG.shuffle(local.filter(function (s) { return s.level === resolveLevel(levelsOf(local), level) && !seen[s.text]; }));
+      pool = pool.concat(more);
+      more.forEach(function (s) { seen[s.text] = true; });
+    }
+    if (pool.length < rounds) {
+      // pad from the next lower levels (never harder than asked)
+      var lower = all.filter(function (s) { return !seen[s.text] && (s.level || 1) < lv; }).sort(function (a, b) { return (b.level || 1) - (a.level || 1); });
+      pool = pool.concat(lower);
     }
     if (!pool.length) { pool = RG.shuffle(local); }
     return pool;
@@ -91,15 +120,15 @@
       injectStyle();
       var dead = false;
       var timers = [];
-      var level = ctx.level || 1;
+      var level = Math.max(1, Math.min(5, ctx.level || 1));
       var rounds = ctx.rounds || 5;
       var pool = buildPool(level, rounds);
       var allEmoji = [];
       ((RG.content && RG.content.sentences) || []).concat(LOCAL).forEach(function (s) {
         if (s && s.emoji && allEmoji.indexOf(s.emoji) < 0) { allEmoji.push(s.emoji); }
       });
-      var roundNo = 0, locked = true, misses = 0, item = null;
-      var readBtn = null;
+      var rowSpans = [], roundNo = 0, locked = true, misses = 0, item = null;
+      var readBtn = null, modelTimer = null, modeled = false;
 
       function noop() {}
       function later(fn, ms) {
@@ -126,19 +155,24 @@
       function startRound() {
         if (dead) { return; }
         locked = false;
-        misses = 0;
+        misses = 0; modeled = false;
         item = pool[roundNo % pool.length];
+        container.dataset.answer = item.emoji;
         stage.innerHTML = '';
 
         var prompt = RG.el('div', { class: 'prompt', text: 'Read the sentence. Tap the matching picture!' });
         var card = RG.el('div', { class: 'sm-card' });
         var sentences = (item.text.match(/[^.!?]+[.!?]*/g) || [item.text]).map(function (x) { return x.trim(); }).filter(function (x) { return x; });
         var spans = [];
+        rowSpans = spans;
+        var nWords = item.text.split(/\s+/).length;
+        var fs = nWords > 18 ? '1.35rem' : nWords > 11 ? '1.6rem' : '';
         sentences.forEach(function (sent) {
           var line = RG.el('div', { class: 'sm-line' });
           sent.split(/\s+/).forEach(function (w) {
             if (!w) { return; }
             var sp = RG.el('button', { class: 'sm-w word', type: 'button', text: w });
+            if (fs) { sp.style.fontSize = fs; }
             sp.addEventListener('click', function () {
               if (dead) { return; }
               spans.forEach(function (x) { x.classList.remove('sm-on'); });
@@ -198,6 +232,32 @@
         quick(intro);
       }
 
+      function clearHl() { rowSpans.forEach(function (x) { x.classList.remove('sm-on'); }); }
+
+      /* After 2 misses: read the sentence aloud word by word, then say which picture matches (and, for the
+         inference level, why), and make the right picture glow. */
+      function modelAnswer(btns) {
+        modeled = true; locked = true;
+        btns.forEach(function (x) { if (x.textContent !== item.emoji) { x.classList.add('sm-dim'); } });
+        var words = rowSpans.slice(), i = 0;
+        var step = 330;
+        (function tick() {
+          clearHl();
+          if (dead || i >= words.length) { return; }
+          words[i].classList.add('sm-on'); i++;
+          modelTimer = later(tick, step);
+        })();
+        var hintText = item.hint || item.why || item.explain || '';
+        var why = hintText ? ' ' + hintText : '';
+        say('Let me read it. ' + item.text, { mood: 'calm' })
+          .then(function () { clearHl(); if (dead) { return; } return say('This picture matches!' + why, { mood: 'gentle' }); })
+          .then(function () {
+            if (dead) { return; }
+            btns.forEach(function (x) { x.classList.remove('sm-dim'); if (x.textContent === item.emoji) { x.classList.add('hint'); } });
+            locked = false;
+          });
+      }
+
       function onPick(b, em, btns) {
         if (locked || dead) { return; }
         if (em === item.emoji) {
@@ -207,7 +267,8 @@
           b.classList.add('correct');
           RG.celebrate(b);
           say(item.text)
-            .then(function () { if (!dead) { return say(RG.praise()); } })
+            .then(function () { var ht = item.hint || item.why || item.explain; if (!dead && ht && level >= 5) { return say(ht, { mood: 'calm' }); } })
+            .then(function () { if (!dead) { return say(RG.praise(), { mood: 'excited' }); } })
             .then(function () { return sleep(350); })
             .then(function () {
               if (dead) { return; }
@@ -219,9 +280,13 @@
           ctx.answer(false);
           misses++;
           RG.wobble(b);
-          quick('Try again! Read it carefully.');
-          if (misses >= 2) {
-            btns.forEach(function (x) { if (x.textContent === item.emoji) { x.classList.add('hint'); } });
+          if (misses >= 2 && !modeled) {
+            modelAnswer(btns);
+          } else {
+            quick('Try again! Read it slowly, one word at a time.', { mood: 'gentle' });
+            if (misses >= 2) {
+              btns.forEach(function (x) { if (x.textContent === item.emoji) { x.classList.add('hint'); } });
+            }
           }
         }
       }

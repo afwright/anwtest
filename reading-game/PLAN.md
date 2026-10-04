@@ -271,3 +271,40 @@ The Web Speech API has no emotion control; we can only control **voice choice, p
   - the not-yet-done islands show a small ✨ "new" marker.
 - When it first unlocks (on return to the map after the final voyage), play a short unlock celebration ("The Challenge Island is open!"). It stays unlocked forever.
 - Grown-ups panel: an "Unlock Challenge Island now" override toggle per profile.
+
+---
+
+# ADDENDUM v4: Grade-matched difficulty (BINDING)
+Players: Big Captain is a **2nd grader**; Little Captain is a 4-year-old (pre-K).
+Problems found in v3: the big track starts at kindergarten and tops out at mid-1st grade; every profile starts at level 1;
+the word-builder L2 list contains vowel-team words that haven't been taught yet; and a 10-question quiz is too long for a 4-year-old.
+
+## 1. Levels 1–5 for big-track skills
+- `RG.progress.level(skill)` returns 1..`maxLevel(skill, track)`. Big-track skills (`phonics`, `sight-words`, `comprehension`, `fluency`, `real-world`, `quiz`) go to **5**; little-track skills stay at **3**; `rhyme` is 3 for little and 4 for big.
+- The promotion/demotion rule is unchanged. Migrate stored data safely.
+- Games must handle `ctx.level` up to 5. A game without content for a level uses its highest available level.
+
+## 2. Content by level (big track); every picturable word needs an emoji, and each word may only use patterns taught at or below its level
+| Level | phonics (word-builder) | sight-words (Dolch) | comprehension (sentence-match) | fluency (story-cove) |
+|---|---|---|---|---|
+| 1 | CVC + sh/ch/th/ck (ship, duck, chin) | primer | 1 sentence, CVC + sight words | 25–40 words, literal questions |
+| 2 | blends + silent e (frog, crab, cake, kite, rope) | first grade | 1–2 sentences | 40–60 words |
+| 3 | vowel teams as ONE tile: ai, ay, ee, ea, oa, ow(snow), oo (rain, tray, seed, leaf, boat, snow, moon) | **second grade** (always, around, because, been, before, best, both, buy, call, cold, does, don't, fast, first, five, found, gave, goes, green, its, made, many, off, or, pull, read, right, sing, sit, sleep, tell, their, these, those, upon, us, use, very, wash, which, why, wish, work, would, write, your) | 2 sentences | 60–100 words; one "why" question |
+| 4 | r-controlled (ar, or, er, ir, ur) + diphthongs (oi, oy, ou, ow-cow) as one tile (star, fork, bird, turtle?, coin, boy, house, cow) | **third grade** (about, better, bring, carry, clean, cut, done, draw, drink, eight, fall, far, full, got, grow, hold, hot, hurt, if, keep, kind, laugh, light, long, much, myself, never, only, own, pick, seven, shall, show, six, small, start, ten, today, together, try, warm) | 2–3 sentences; vowel teams/r-controlled | 100–150 words; questions on why, sequence and word meaning |
+| 5 | endings (-ing, -ed, -s with no spelling change) + compound/two-syllable words (sunset, rainbow, starfish, cupcake, jumping, sailboat, popcorn, seashell) as syllable/chunk tiles | mixed 2nd–3rd grade + Fry 101–200 | a short paragraph whose picture match needs **inference** (e.g., "Mia zipped her coat. Flakes fell all night." → ❄️) | 150–220 words; inference + "what might happen next" |
+
+- Re-sort the existing lists. Move cheese, sheep, three, tree, wheel, tooth, spoon, train, snail, cloud, flower, grapes and star to their correct levels (3 or 4), or drop any that don't fit.
+- **Serial story (why reading is fun):** add "The Secret of Gull Island", a 5-chapter Captain Penny adventure at levels 4–5. Each chapter ends on a cliffhanger, and the next chapter unlocks only by finishing the previous one. Show it in story-cove as a "Chapter book" shelf with locked chapters. Use `RG.progress` to persist the chapters read.
+- reading-quest big track: add at least 6 scenes for levels 4–5 with multi-step instructions, a ferry timetable ("which boat leaves first?"), a recipe with amounts, a two-item comparison ("which map shows the shortest way?") and a letter that requires inference.
+- captains-quiz (big): draw each question from the player's current level for that skill (min 2, so it's never trivial).
+
+## 3. Placement: "Captain's Check-in"
+- Runs the first time a profile opens the map (and from the grown-ups panel via "Re-run check-in"). Grown-ups can skip it.
+- It is a playful, game-framed ladder: never "wrong", and stop a ladder after 2 misses at a rung.
+  - big: decoding ladder (pick the picture for: cat → crab → cake → rain → bird → jumping), sight words (one each from the primer through third-grade lists), and one level-3 sentence.
+  - little: name 4 uppercase letters, 2 letter sounds, 1 rhyme.
+- Each skill starts at the highest rung passed (2/2 correct), capped at track max. Unmeasured skills follow phonics.
+- Grown-ups panel: a per-skill level override (− / +).
+
+## 4. Little track tweaks
+- captains-quiz on the little track is **6** questions. `def.rounds` may be a number or `function(profile) -> number`; app.js resolves it at launch.

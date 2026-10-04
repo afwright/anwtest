@@ -370,3 +370,40 @@ Teach a repeatable long-word strategy: **find the vowels → saw between syllabl
 - Tricky Words (v4.1) includes words missed in both new games.
 - Grown-ups panel, "Patterns we noticed": counts of recorded error types in plain language. For example, "Often drops the second letter in blends (frog → fog): 7 times this week. Practice: say the word slowly and tap a finger for each sound." This gives the parent and teacher something concrete.
 - `RG.progress.recordError(skill, type, word)` and `.errors()` are persisted per profile and implemented in core.js.
+
+## v4.3: Build split and shared interfaces for v4/v4.1/v4.2 (BINDING)
+Three agents work in parallel, and **each agent writes ONLY its own files**.
+
+| Agent | Files |
+|---|---|
+| CORE-4 | js/content.js, js/core.js, js/app.js, index.html, css/style.css, js/games/captains-quiz.js, tools/check-decodable.js |
+| NEWGAMES-4 | js/games/blend-cannon.js, js/games/syllable-saw.js (word data local to each file) |
+| GAMES-4 | js/games/word-builder.js, sight-fishing.js, sentence-match.js, story-cove.js, reading-quest.js |
+
+### New RG.content fields (CORE-4 writes them; GAMES-4 reads them, with fallbacks)
+```js
+RG.content.phonicsWords = { 1:[{word:'ship', emoji:'🚢', tiles:['sh','i','p']}], 2:[...], 3:[...], 4:[...], 5:[...] }
+   // ≥ 14 per level, per the v4 table. tiles = one string per grapheme unit: digraphs, vowel teams, r-controlled
+   // and diphthongs are ONE tile; blends are SEPARATE letters; L5 chunks = syllables/affixes ('jump','ing').
+RG.content.sightWords = { level1..level5 }            // per the v4 table
+RG.content.sentences  = [{text, emoji, distractors:[e,e], level:1..5, names?:[]}]   // ≥ 8 per level; L5 = inference
+RG.content.stories    = [{id, title, level:1..5, pages:[{text, emoji}], questions:[{q, options, answer, type:'literal'|'why'|'sequence'|'vocab'|'inference'}], names?:[]}]
+                        // ≥ 2 per level; hi-lo themes; strictly decodable for their level (tools/check-decodable.js)
+RG.content.serial     = {id:'gull-island', title:'The Secret of Gull Island', chapters:[{title, level:4|5, pages, questions, names}] }  // 5 chapters, cliffhangers
+RG.content.decodable  = { patternsByLevel: {1:[...],2:[...],...}, sightByLevel }  // used by the checker; exported for the games' own checks
+```
+
+### New RG.progress API (CORE-4 implements it; everyone else guards with `if (RG.progress.tricky)` etc.)
+```js
+RG.progress.maxLevel(skill) -> 3|4|5            // by skill and current track, per v4 §1
+RG.progress.setLevel(skill, n)                  // placement + grown-ups override
+RG.progress.recordError(skill, type, word)      // v4.2
+RG.progress.errors() -> [{skill, type, word, at}]
+RG.progress.tricky.add(word, skill)             // v4.1 Tricky Words
+RG.progress.tricky.correct(word)                // counts a correct answer on a distinct day; removed after 3 days
+RG.progress.tricky.list(skill?) -> [{word, skill, days}]
+RG.progress.badge(id, label, emoji)  / .badges()   // e.g. Smooth Sailor rereading badge
+RG.progress.get(key) / RG.progress.set(key, value) // small per-profile key/value store for game state (chapters read, reread counts)
+```
+- `ctx.level` can be 1..5. Big-track skills: `phonics`, `blends`, `long-words`, `sight-words`, `comprehension`, `fluency`, `real-world`, `quiz` (max 5); `rhyme` (max 4 on big).
+- Games call `RG.progress.tricky.add(word, skill)` on a wrong answer about a specific word, and `.correct(word)` when a tricky word is answered right. Games that pick target words mix in 1–2 tricky words from their own skill when available.

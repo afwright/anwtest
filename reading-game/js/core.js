@@ -63,7 +63,7 @@
         { id: 'big', name: 'Big Captain', track: 'big', avatar: '🦊' }
       ],
       data: {},
-      settings: { speechRate: 1, voiceURI: '' }
+      settings: { speechRate: 1, voiceURI: '', autoFullscreen: true, expressive: true }
     };
   }
   function load() {
@@ -71,6 +71,8 @@
     try { var raw = localStorage.getItem(KEY); if (raw) s = JSON.parse(raw); } catch (e) { s = null; }
     if (!s || typeof s !== 'object' || !Array.isArray(s.profiles)) s = defaultState();
     s.data = s.data || {}; s.settings = s.settings || { speechRate: 1, voiceURI: '' };
+    if (typeof s.settings.autoFullscreen !== 'boolean') s.settings.autoFullscreen = true;
+    if (typeof s.settings.expressive !== 'boolean') s.settings.expressive = true;
     return s;
   }
   var state = load();
@@ -86,6 +88,10 @@
     d.skills = d.skills || {}; d.stars = d.stars || 0; d.stickers = d.stickers || [];
     d.coins = d.coins || 0; d.lifetime = d.lifetime || 0; d.owned = d.owned || []; d.equipped = d.equipped || {};
     d.quiz = d.quiz || []; d.powers = d.powers || [];
+    // v3 fields (older saves lack them)
+    if (!d.completed || typeof d.completed !== 'object' || Array.isArray(d.completed)) d.completed = {};
+    if (!Array.isArray(d.recommended)) d.recommended = [];
+    d.unlocked = !!d.unlocked; d.unlockOverride = !!d.unlockOverride;
     return d;
   }
   function cur() { return pdata(RG.profile().id); }
@@ -101,6 +107,7 @@
     save();
   };
   RG.profileData = pdata;
+  RG.CHALLENGE_ID = 'captains-quiz';
 
   /* ---------------- progress ---------------- */
   RG.progress = {
@@ -129,6 +136,35 @@
     addStars: function (n) { cur().stars += n; save(); },
     stickers: function () { return cur().stickers.slice(); },
     addSticker: function (s) { cur().stickers.push(s); save(); },
+    /* finished voyages per island; completing an island clears its "Practice me!" flag */
+    markComplete: function (gameId) {
+      var d = cur(); if (!gameId) return;
+      d.completed[gameId] = (d.completed[gameId] || 0) + 1;
+      var i = d.recommended.indexOf(gameId); if (i >= 0) d.recommended.splice(i, 1);
+      save();
+    },
+    completed: function (gameId, profileId) { return pdata(profileId || RG.profile().id).completed[gameId] || 0; },
+    setRecommended: function (ids) {
+      var out = [];
+      (ids || []).forEach(function (id) { if (typeof id === 'string' && out.indexOf(id) < 0) out.push(id); });
+      cur().recommended = out; save();
+    },
+    recommended: function () { return cur().recommended.slice(); },
+    /* Challenge Island gate: locked until every other island on the track has one finished voyage */
+    challenge: function (profileId) {
+      var p = RG.profile(), d = cur(), missing = [], total = 0;
+      if (profileId) state.profiles.forEach(function (x) { if (x.id === profileId) p = x; });
+      d = pdata(p.id);
+      RG.games.forEach(function (g) {
+        if (g.id === RG.CHALLENGE_ID || (g.tracks && g.tracks.indexOf(p.track) < 0)) return;
+        total++; if (!(d.completed[g.id] > 0)) missing.push(g.id);
+      });
+      var allDone = missing.length === 0;
+      return { locked: !(allDone || d.unlocked || d.unlockOverride), allDone: allDone, unlocked: d.unlocked, override: d.unlockOverride,
+        total: total, done: total - missing.length, missing: missing };
+    },
+    setUnlocked: function (v) { cur().unlocked = !!v; save(); },
+    setUnlockOverride: function (v, profileId) { pdata(profileId || RG.profile().id).unlockOverride = !!v; save(); },
     resetAll: function (profileId) {
       var keep = pdata(profileId); void keep;
       state.data[profileId] = {}; pdata(profileId); save();
@@ -289,27 +325,75 @@
   if (synth) {
     try { synth.addEventListener('voiceschanged', refreshVoices); } catch (e) { synth.onvoiceschanged = refreshVoices; }
   }
-  var BAD = /fred|albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|junior|kathy|pipe organ|princess|ralph|trinoids|whisper|zarvox|wobble|organ|superstar/i;
-  var PREFER = ['samantha', 'ava', 'allison', 'susan', 'karen', 'google us english', 'aria', 'jenny', 'zira', 'moira', 'tessa'];
+  var BAD = /fred|albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|hysterical|junior|kathy|pipe organ|princess|ralph|trinoids|whisper|zarvox|wobble|organ|superstar|jester/i;
+  var GOOD_NAMES = ['samantha', 'ava', 'zoe', 'evan', 'aria', 'jenny', 'guy', 'google us english', 'allison', 'susan', 'karen', 'zira', 'moira', 'tessa'];
+  function voiceScore(v) {
+    var n = String(v.name || '').toLowerCase(), sc = 0, i;
+    if (/natural|neural|premium|enhanced|online/.test(n)) sc += 60;
+    if (/google/.test(n)) sc += 35;
+    for (i = 0; i < GOOD_NAMES.length; i++) if (n.indexOf(GOOD_NAMES[i]) >= 0) { sc += 30 - i; break; }
+    if (/en[-_]US/i.test(v.lang)) sc += 12; else if (/^en/i.test(v.lang)) sc += 4;
+    return sc;
+  }
+  /* English voices only, best first */
   RG.voices = function () {
     refreshVoices();
-    return voices.filter(function (v) { return /^en/i.test(v.lang) && !BAD.test(v.name); });
+    var list = voices.filter(function (v) { return /^en/i.test(v.lang) && !BAD.test(v.name); })
+      .map(function (v, i) { return { v: v, s: voiceScore(v), i: i }; });
+    list.sort(function (a, b) { return b.s - a.s || a.i - b.i; });
+    return list.map(function (x) { return x.v; });
   };
-  function chooseVoice() {
+  function chooseVoice(uri) {
     refreshVoices();
-    var uri = RG.settings.voiceURI, i;
+    uri = uri || RG.settings.voiceURI;
+    var i;
     if (uri) for (i = 0; i < voices.length; i++) if (voices[i].voiceURI === uri) return voices[i];
-    var en = RG.voices();
-    var us = en.filter(function (v) { return /en[-_]US/i.test(v.lang); });
-    var pool = us.length ? us : en;
-    for (var p = 0; p < PREFER.length; p++)
-      for (i = 0; i < pool.length; i++) if (pool[i].name.toLowerCase().indexOf(PREFER[p]) >= 0) return pool[i];
-    return pool[0] || null;
+    return RG.voices()[0] || null;
   }
+
+  RG.bestVoice = function () { return chooseVoice(); };
+
+  /* Moods: the Web Speech API has no emotion control, so we vary pitch, rate, volume and phrasing. */
+  var MOODS = {
+    excited:  { pitch: 1.32, rate: 1.10, vol: 1 },
+    happy:    { pitch: 1.18, rate: 1.02, vol: 1 },
+    gentle:   { pitch: 1.00, rate: 0.88, vol: 0.85 },
+    question: { pitch: 1.14, rate: 0.98, vol: 1 },
+    story:    { pitch: 1.10, rate: 0.94, vol: 1 },
+    calm:     { pitch: 1.05, rate: 0.95, vol: 0.95 }
+  };
+  RG.moods = Object.keys(MOODS);
+  function autoMood(text) {
+    if (/^\s*(try again|oops|good try|not quite|almost)/i.test(text)) return 'gentle';
+    if (/!/.test(text)) return 'excited';
+    if (/\?\s*$/.test(text)) return 'question';
+    return 'happy';
+  }
+  function jitter(n) { return (Math.random() * 2 - 1) * n; }
+  function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+  /* Split into short chunks (sentences / clauses) - short chunks also dodge Chrome's ~15 s cut-off bug. */
+  var MAXCHUNK = 90;
+  function splitChunks(text) {
+    var out = [], parts = text.match(/[^.!?,;:]+[.!?,;:]*/g) || [text], i;
+    for (i = 0; i < parts.length; i++) {
+      var t = parts[i].trim();
+      if (!/[A-Za-z0-9]/.test(t)) { if (out.length && t) out[out.length - 1].t += t; continue; }
+      var m = t.match(/[.!?,;:]+$/), end = m ? m[0] : '';
+      while (t.length > MAXCHUNK) { // very long clause: break at a space
+        var cut = t.lastIndexOf(' ', MAXCHUNK); if (cut < 20) cut = t.indexOf(' ', MAXCHUNK);
+        if (cut < 0) break;
+        out.push({ t: t.slice(0, cut), end: '' }); t = t.slice(cut + 1);
+      }
+      out.push({ t: t, end: end });
+    }
+    return out.length ? out : [{ t: text, end: '' }];
+  }
+  function gapAfter(end) { return /[.!?]/.test(end) ? 250 : (end ? 120 : 60); }
+
   var pending = [], token = 0;
   function flushPending() { var p = pending; pending = []; p.forEach(function (f) { f(); }); }
   RG.stopSpeaking = function () {
-    token++;
+    token++; // any queued chunk of the old speech is now stale
     try { if (synth) synth.cancel(); } catch (e) { /* ignore */ }
     flushPending();
   };
@@ -318,34 +402,58 @@
     text = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
     return new Promise(function (resolve) {
       if (!text) { resolve(); return; }
+      var my = ++token; // generation counter: cancel() can fire onend for old utterances
       try { if (synth) synth.cancel(); } catch (e) { /* ignore */ }
       flushPending();
-      var my = ++token, done = false, timer;
-      var rate = (opts.rate || 0.85) * (RG.settings.speechRate || 1);
-      var est = Math.max(700, text.length * 80 / Math.max(0.4, rate) + 400);
+      var expressive = RG.settings.expressive !== false;
+      var single = !expressive || !!opts.onboundary; // karaoke needs one utterance so word offsets stay valid
+      var mood = MOODS[opts.mood] ? opts.mood : autoMood(text), M = MOODS[mood];
+      var userRate = RG.settings.speechRate || 1;
+      var baseRate = (opts.rate || 0.85) * (expressive ? M.rate : 1) * userRate;
+      var chunks = single ? [{ t: text, end: '' }] : splitChunks(text);
+      var est = Math.max(700, text.length * 80 / Math.max(0.4, baseRate) + 400 + chunks.length * 260);
+      var done = false, timer = null, ct = null, pt = null, ci = 0, voice = null;
       function fin() {
-        if (done) return; done = true; clearTimeout(timer);
+        if (done) return; done = true; clearTimeout(timer); clearTimeout(ct); clearTimeout(pt);
         var ix = pending.indexOf(fin); if (ix >= 0) pending.splice(ix, 1);
         resolve();
       }
       pending.push(fin);
+      function live() { return !done && my === token; }
+      function playNext() {
+        if (!live()) return;
+        if (ci >= chunks.length) { fin(); return; }
+        var idx = ci++, c = chunks[idx], last = ci >= chunks.length, adv = false;
+        var u = new SpeechSynthesisUtterance(c.t);
+        if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
+        var pitch, rate;
+        if (single) {
+          pitch = opts.pitch || (expressive ? M.pitch : 1.1); rate = baseRate;
+        } else {
+          pitch = (opts.pitch || M.pitch) + jitter(0.05);
+          rate = baseRate + jitter(0.04);
+          if (/\?/.test(c.end)) pitch += 0.12;                                  // questions rise
+          else if (/!/.test(c.end) && (mood === 'excited' || mood === 'happy' || mood === 'story')) pitch += 0.08;
+          if (mood === 'story') rate *= 1 + 0.04 * Math.sin(idx * 1.7);        // varied cadence
+        }
+        u.rate = clamp(rate, 0.3, 1.6); u.pitch = clamp(pitch, 0.5, 2); u.volume = expressive ? M.vol : 1;
+        function next() {
+          if (adv) return; adv = true; clearTimeout(ct);
+          if (!live()) return; // stale (cancelled or superseded): never continue the old queue
+          if (last) { fin(); return; }
+          pt = setTimeout(playNext, gapAfter(c.end));
+        }
+        u.onend = next; u.onerror = next;
+        if (opts.onboundary) u.onboundary = opts.onboundary;
+        ct = setTimeout(next, Math.max(1500, c.t.length * 90 / Math.max(0.4, u.rate) * 1.6 + 2000)); // onend never fired (Chrome bug)
+        RG._utt = u;
+        try { synth.speak(u); } catch (e) { clearTimeout(ct); if (idx === 0) throw e; fin(); }
+      }
       var ok = false;
       if (synth && typeof SpeechSynthesisUtterance !== 'undefined') {
-        try {
-          var u = new SpeechSynthesisUtterance(text);
-          var v = chooseVoice();
-          if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
-          u.rate = Math.max(0.3, Math.min(1.6, rate));
-          u.pitch = opts.pitch || 1.1;
-          u.onend = fin; u.onerror = fin;
-          if (opts.onboundary) u.onboundary = opts.onboundary;
-          RG._utt = u;
-          synth.speak(u);
-          ok = true;
-        } catch (e) { ok = false; }
+        try { voice = chooseVoice(opts.voiceURI); playNext(); ok = true; } catch (e) { ok = false; }
       }
       timer = setTimeout(fin, ok ? est * 1.6 + 3000 : est);
-      void my;
     });
   };
   var LETTER_NAMES = { a: 'ay', b: 'bee', c: 'see', d: 'dee', e: 'ee', f: 'eff', g: 'jee', h: 'aitch', i: 'eye', j: 'jay',
@@ -404,8 +512,12 @@
     el.classList.remove('wobble'); void el.offsetWidth; el.classList.add('wobble');
     setTimeout(function () { el.classList.remove('wobble'); }, 600);
   };
-  var PRAISE = ['Great job!', 'You did it!', 'Awesome reading!', 'Super!', 'Fantastic!', 'Wonderful!', 'Hooray!', 'Well done, captain!', 'Brilliant!'];
+  var PRAISE = ['Great job!', 'You did it!', 'Awesome reading!', 'Super!', 'Fantastic!', 'Wonderful!', 'Hooray!', 'Well done, captain!', 'Brilliant!',
+    'Woohoo!', 'Yes! Nailed it!', "Shiver me timbers, that's right!", 'High five, Captain!', 'Ahoy, you got it!', 'Look at you go!',
+    'Spot on, sailor!', 'Amazing! You are a reading star!', 'Yo ho ho, that is correct!', 'Super duper!', 'You make it look easy!',
+    'Treasure-tastic!', 'That was perfect!', 'Wow, great thinking!', 'Hip hip hooray!', "You're a star, matey!"];
   RG.praise = function () { return RG.sample(PRAISE); };
+  RG.praiseCount = PRAISE.length;
   RG.celebrate = function (targetEl) {
     var layer = RG.el('div', { class: 'fx-layer' });
     document.body.appendChild(layer);
@@ -495,6 +607,50 @@
       el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', cancel);
     } };
+  };
+
+
+  /* ---------------- full screen ---------------- */
+  /* Every call is wrapped: sandboxed iframes and iPhone Safari refuse or lack the API, and we degrade silently. */
+  function fsEl() { var d = document; return d.fullscreenElement || d.webkitFullscreenElement || null; }
+  RG.fullscreen = {
+    supported: function () {
+      try {
+        var d = document, de = d.documentElement;
+        var req = de && (de.requestFullscreen || de.webkitRequestFullscreen);
+        var en = d.fullscreenEnabled !== undefined ? d.fullscreenEnabled : d.webkitFullscreenEnabled;
+        return !!req && en !== false;
+      } catch (e) { return false; }
+    },
+    active: function () { try { return !!fsEl(); } catch (e) { return false; } },
+    isIOS: function () {
+      try { return /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); } catch (e) { return false; }
+    },
+    /* resolves true if full screen is now on, false if unsupported or refused (never rejects) */
+    enter: function () {
+      return new Promise(function (resolve) {
+        try {
+          if (!RG.fullscreen.supported()) { resolve(false); return; }
+          if (fsEl()) { resolve(true); return; }
+          var de = document.documentElement, r = de.requestFullscreen ? de.requestFullscreen() : de.webkitRequestFullscreen();
+          if (r && typeof r.then === 'function') r.then(function () { resolve(true); }, function () { resolve(false); });
+          else resolve(true);
+        } catch (e) { resolve(false); }
+      });
+    },
+    exit: function () {
+      return new Promise(function (resolve) {
+        try {
+          var d = document, r = d.exitFullscreen ? d.exitFullscreen() : (d.webkitExitFullscreen ? d.webkitExitFullscreen() : null);
+          if (r && typeof r.then === 'function') r.then(function () { resolve(true); }, function () { resolve(false); });
+          else resolve(true);
+        } catch (e) { resolve(false); }
+      });
+    },
+    toggle: function () { return RG.fullscreen.active() ? RG.fullscreen.exit().then(function () { return true; }) : RG.fullscreen.enter(); },
+    onchange: function (fn) {
+      ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) { try { document.addEventListener(ev, fn); } catch (e) { /* ignore */ } });
+    }
   };
 
   document.addEventListener('visibilitychange', function () { if (document.hidden) RG.stopSpeaking(); });

@@ -205,7 +205,7 @@
         u.lang = 'en-US';
         try {
           var vs = window.speechSynthesis.getVoices() || [];
-          var v = vs.filter(function (x) { return /^en[-_]US/i.test(x.lang); })[0] || vs.filter(function (x) { return /^en/i.test(x.lang); })[0];
+          var v = (RG.bestVoice && RG.bestVoice()) || vs.filter(function (x) { return /^en[-_]US/i.test(x.lang); })[0] || vs.filter(function (x) { return /^en/i.test(x.lang); })[0];
           if (v) { u.voice = v; }
         } catch (e3) { /* ignore */ }
         u.onstart = function () {
@@ -306,9 +306,9 @@
 
         ctx.onReplay = function () { readWords(words, enableNext); };
         if (pageIdx === 0) {
-          quick(story.title + '. Read the page, or tap the speaker to hear it.');
+          quick(story.title + '. Read the page, or tap the speaker to hear it.', { mood: 'story' });
         } else {
-          quick('Read the page.');
+          quick('Read the page.', { mood: 'story' });
         }
       }
 

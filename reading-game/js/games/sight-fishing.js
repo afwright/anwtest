@@ -211,7 +211,7 @@
         ctx.answer(false);
         misses++;
         RG.wobble(f.el);
-        quick('That says ' + f.word + '. Try again! Find ' + target + '.');
+        quick('That says ' + f.word + '. Try again! Find ' + target + '.', { mood: 'gentle' });
         swimAway(f);
         if (misses >= 2) {
           fishes.forEach(function (x) { if (x.isTarget && !x.done) { x.el.classList.add('hint'); } });

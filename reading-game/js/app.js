@@ -23,10 +23,41 @@
     // a rank-up earned mid-game celebrates once the child is off the game screen
     if (!node.querySelector('.game-stage')) { try { RG.flushRankUp(4500); } catch (e) { /* ignore */ } }
   }
-  function toast(msg) {
-    var t = h('div', { class: 'pill', text: msg, style: 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:3000;max-width:90vw;text-align:center' });
+  function toast(msg, ms) {
+    var t = h('div', { class: 'pill toast', role: 'status', text: msg, style: 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:3000;max-width:90vw;text-align:center' });
     document.body.appendChild(t);
-    setTimeout(function () { if (t.parentNode) t.remove(); }, 2600);
+    setTimeout(function () { if (t.parentNode) t.remove(); }, ms || 2600);
+  }
+
+  /* ---------- full screen ---------- */
+  var FS_ICON_ON = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/></svg>';
+  var FS_ICON_OFF = '<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+  function fsHint(force) {
+    // friendly one-time toast when full screen is unavailable or refused (iPhone Safari, sandboxed iframes)
+    if (!force) { if (RG.settings.fsHinted) return; RG.settings.fsHinted = true; RG.saveSettings(); }
+    toast(RG.fullscreen.isIOS()
+      ? 'For full screen: tap Share, then Add to Home Screen.'
+      : "Full screen isn't available here. Try opening the game in its own browser tab.", 5200);
+  }
+  function syncFs(btn) {
+    var on = RG.fullscreen.active();
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-label', on ? 'Exit full screen' : 'Full screen');
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    var ic = btn.querySelector('.fs-ic'); if (ic) ic.innerHTML = on ? FS_ICON_ON : FS_ICON_OFF;
+  }
+  RG.fullscreen.onchange(function () {
+    Array.prototype.forEach.call(document.querySelectorAll('.fs-toggle'), syncFs);
+  });
+  // returns null (nothing drawn) when full screen cannot work here
+  function fsButton(withLabel) {
+    if (!RG.fullscreen.supported()) return null;
+    var b = h('button', { class: (withLabel ? 'btn' : 'iconbtn') + ' fs-toggle', type: 'button' },
+      h('span', { class: 'fs-ic' }), withLabel ? h('span', { class: 'fs-lbl', text: 'Full screen' }) : null);
+    syncFs(b);
+    return press(b, function () {
+      RG.fullscreen.toggle().then(function (ok) { if (!ok) fsHint(true); });
+    });
   }
   function press(btn, fn) {
     btn.addEventListener('click', function (e) { try { RG.sfx.pop(); } catch (x) { /* ignore */ } fn(e); });
@@ -121,7 +152,9 @@
       h('div', { class: 'subtitle', text: 'Sail, read, and find treasure!' }),
       press(h('button', { class: 'btn primary', text: 'Tap to start ⛵' }), function () {
         RG.unlockAudio();
-        RG.speak('Welcome aboard, captain!');
+        // full screen must be requested inside this tap (user gesture)
+        if (RG.settings.autoFullscreen !== false) RG.fullscreen.enter().then(function (ok) { if (!ok) fsHint(false); });
+        RG.speak('Welcome aboard, captain!', { mood: 'excited' });
         pickScreen();
       }));
     show(s);
@@ -143,7 +176,7 @@
       h('h2', { text: 'Who is sailing today?' }),
       h('div', { class: 'captains' }, cards));
     show(s);
-    if (quiet !== true) RG.speak('Who is sailing today?');
+    if (quiet !== true) RG.speak('Who is sailing today?', { mood: 'question' });
   }
 
   /* ---------- map ---------- */
@@ -156,17 +189,38 @@
 
     var path = h('div', { class: 'path' });
     var pattern = ['l', 'm', 'r', 'm'];
+    var ch = RG.progress.challenge();
+    var recommended = RG.progress.recommended();
     ordered.forEach(function (g, i) {
-      var isQ = g === quiz;
-      var b = h('button', { class: 'island' + (isQ ? ' challenge' : ''), 'aria-label': g.title },
+      var isQ = g === quiz, locked = isQ && ch.locked;
+      var pending = ch.locked && !isQ && ch.missing.indexOf(g.id) >= 0;
+      var practice = !isQ && recommended.indexOf(g.id) >= 0;
+      var b = h('button', { class: 'island' + (isQ ? ' challenge' : '') + (locked ? ' locked' : '') + (pending ? ' pending' : ''), 'aria-label': g.title, 'aria-disabled': locked ? 'true' : false, dataset: { id: g.id } },
         h('div', { class: 'land', text: g.emoji }),
-        h('div', { class: 'name', text: isQ ? "Captain's Challenge" : g.title }));
+        h('div', { class: 'name', text: isQ ? "Captain's Challenge" : g.title }),
+        locked ? h('div', { class: 'lock-badge', 'aria-hidden': 'true', text: '🔒' }) : null,
+        locked ? h('div', { class: 'prog-badge', text: ch.done + ' of ' + ch.total }) : null,
+        pending ? h('div', { class: 'new-mark', text: '✨ new' }) : null,
+        practice ? h('div', { class: 'practice-flag', text: '🚩 Practice me!' }) : null);
       var busy = false;
       press(b, function () {
-        if (busy) return; busy = true;
+        if (busy) return;
+        var now = RG.progress.challenge();
+        if (isQ && now.locked) { // gentle "not yet": explain and pulse what is left
+          var n = now.missing.length, msg = 'Finish all the other islands first! Just ' + n + ' more to go.';
+          RG.speak(msg, { mood: 'gentle' });
+          toast(msg, 3200);
+          RG.wobble(b);
+          Array.prototype.forEach.call(path.querySelectorAll('.island.pending'), function (x) {
+            x.classList.remove('nudge'); void x.offsetWidth; x.classList.add('nudge');
+            setTimeout(function () { x.classList.remove('nudge'); }, 2600);
+          });
+          return;
+        }
+        busy = true;
         b.classList.add('go');
         var tok = screenToken;
-        var say = RG.speak(g.blurb || g.title);
+        var say = RG.speak(g.blurb || g.title, { mood: 'happy' });
         Promise.race([say, RG.wait(3200)]).then(function () {
           if (tok === screenToken) launch(g); else busy = false;
         });
@@ -188,12 +242,31 @@
     var tools = h('div', { class: 'toolbar' },
       press(h('button', { class: 'btn' }, '🏪 Shop'), openShop),
       press(h('button', { class: 'btn' }, '📒 Stickers'), openStickers),
-      press(h('button', { class: 'btn' }, '📜 Why Read?'), openWhyRead));
+      press(h('button', { class: 'btn' }, '📜 Why Read?'), openWhyRead),
+      fsButton(true));
 
     var s = h('div', { class: 'screen' }, top,
       h('div', { class: 'scroll' }, h('div', { class: 'map-body' }, boatEl(), path)), tools);
     show(s);
-    if (greet) RG.speak('Ahoy, ' + p.name + '! Pick an island.');
+    if (quiz && ch.allDone && !ch.unlocked) { // first return to the map after the final voyage
+      RG.progress.setUnlocked(true);
+      var utok = screenToken;
+      setTimeout(function () { if (utok === screenToken) unlockCelebration(); }, 500);
+    } else if (greet) RG.speak('Ahoy, ' + p.name + '! Pick an island.', { mood: 'happy' });
+  }
+
+  function unlockCelebration() {
+    var overlay = h('div', { class: 'rankup unlock', role: 'dialog' },
+      h('div', { class: 'rankup-card' },
+        h('div', { class: 'rankup-emoji', text: '🏆' }),
+        h('div', { class: 'rankup-title', text: 'The Challenge Island is open!' }),
+        h('div', { class: 'rankup-text', text: "You finished every island. Ready for the Captain's Challenge?" }),
+        h('button', { class: 'btn primary', text: 'Hooray!', on: { click: function () { overlay.remove(); } } })));
+    document.body.appendChild(overlay);
+    RG.sfx.win(); RG.celebrate(overlay.querySelector('.rankup-emoji'));
+    RG.speak('The Challenge Island is open!', { mood: 'excited' });
+    var isl = root.querySelector('.island.challenge'); if (isl) isl.classList.add('just-unlocked');
+    setTimeout(function () { if (overlay.parentNode) overlay.remove(); }, 7000);
   }
 
   /* ---------- shop ---------- */
@@ -301,9 +374,10 @@
         ss.wrong = false;
       },
       award: function (n, reason) { if (!ss.alive || ss.finishing) return; ss.earned += n; RG.coins.add(n, reason); },
-      finish: function () {
+      finish: function (opts) {
         if (!ss.alive || ss.finishing) return;
         ss.finishing = true;
+        ss.next = opts && typeof opts.next === 'string' ? opts.next : null;
         dots.forEach(function (d) { d.classList.add('done'); });
         var tok = screenToken;
         setTimeout(function () { if (tok === screenToken && session === ss) treasure(def, ss, total); }, 650);
@@ -317,7 +391,7 @@
     var back = press(h('button', { class: 'iconbtn', 'aria-label': 'Back to map', text: '⬅️' }), function () { ctx.exit(); });
     var header = h('div', { class: 'host-header' },
       h('div', { class: 'left' }, back), dotsEl,
-      h('div', { class: 'right' }, h('div', { class: 'pill coin-pill' }, '🪙', h('span', { class: 'coin-count', text: RG.coins.balance() })), replay));
+      h('div', { class: 'right' }, h('div', { class: 'pill coin-pill' }, '🪙', h('span', { class: 'coin-count', text: RG.coins.balance() })), fsButton(false), replay));
     var screen = h('div', { class: 'screen' }, header, h('div', { class: 'host-body' }, stage));
     // show() calls endSession(), which would kill ss; so swap temporarily
     session = null; show(screen); session = ss;
@@ -348,18 +422,24 @@
     var sticker = RG.sample(RG.stickerPool);
     RG.progress.addStars(total);
     RG.progress.addSticker(sticker.e);
+    RG.progress.markComplete(def.id);
     var bonus = 5, coinsTotal = ss.earned + bonus;
     var chest = h('div', { html: chestSVG() });
     var rewards = h('div', { class: 'rewards' });
-    var playAgain = press(h('button', { class: 'btn primary', text: '🔁 Play again' }), function () { launch(def); });
+    var nextDef = null, prof = RG.profile();
+    RG.games.forEach(function (g) {
+      if (ss.next && g.id === ss.next && g.id !== def.id && g.id !== RG.CHALLENGE_ID && (!g.tracks || g.tracks.indexOf(prof.track) >= 0)) nextDef = g;
+    });
+    var sail = nextDef ? press(h('button', { class: 'btn primary sail', text: '⛵ Sail to ' + nextDef.title }), function () { launch(nextDef); }) : null;
+    var playAgain = press(h('button', { class: 'btn' + (nextDef ? '' : ' primary'), text: '🔁 Play again' }), function () { launch(def); });
     var backBtn = press(h('button', { class: 'btn green', text: '🗺️ Back to map' }), function () { mapScreen(false); });
     var s = h('div', { class: 'screen treasure' },
       h('h2', { text: 'You found treasure!' }), chest, rewards,
-      h('div', { class: 'btns' }, playAgain, backBtn));
+      h('div', { class: 'btns' }, sail, playAgain, backBtn));
     show(s);
     var tok = screenToken;
     RG.sfx.win();
-    RG.speak('Hooray! You found treasure! You earned ' + total + ' stars and a new sticker!');
+    RG.speak('Hooray! You found treasure! You earned ' + total + ' stars and a new sticker!', { mood: 'excited' });
     setTimeout(function () {
       if (tok !== screenToken) return;
       chest.firstChild.classList.add('open');
@@ -385,6 +465,19 @@
         RG.games.forEach(function (g) { if (!seen[g.skill]) { seen[g.skill] = 1; out.push(g.skill); } });
         return out;
       }
+      function sampleVoice(uri) {
+        RG.speak("Ahoy, captain! You can read this. Can you find the treasure? Yes, you can!", { mood: 'happy', voiceURI: uri || undefined });
+      }
+      function toggleSwitch(on, onChange, label) {
+        var b = h('button', { class: 'switch' + (on ? ' on' : ''), type: 'button', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': label }, h('span', { class: 'knob' }));
+        return press(b, function () { on = !on; b.classList.toggle('on', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); onChange(on); });
+      }
+      function switchRow(label, help, key, dflt, after) {
+        var on = RG.settings[key] === undefined ? dflt : RG.settings[key] !== false;
+        return h('div', { class: 'gu-row' }, h('label', { text: label }),
+          toggleSwitch(on, function (v) { RG.settings[key] = v; RG.saveSettings(); if (after && v) after(); }, label),
+          h('span', { class: 'gu-help', text: help }));
+      }
       function render() {
         body.innerHTML = '';
         // speech
@@ -398,9 +491,13 @@
         if (voices.length) {
           var sel = h('select', { 'aria-label': 'Voice' }, h('option', { value: '', text: 'Automatic (best English voice)' }),
             voices.map(function (v) { return h('option', { value: v.voiceURI, text: v.name + ' (' + v.lang + ')', selected: v.voiceURI === RG.settings.voiceURI }); }));
-          sel.addEventListener('change', function () { RG.settings.voiceURI = sel.value; RG.saveSettings(); RG.speak('Ahoy! This is my voice.'); });
-          body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Voice' }), sel));
+          sel.addEventListener('change', function () { RG.settings.voiceURI = sel.value; RG.saveSettings(); sampleVoice(sel.value); });
+          var test = press(h('button', { class: 'btn small test-voice', 'aria-label': 'Test this voice', text: '▶ Test' }), function () { sampleVoice(sel.value); });
+          body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Voice' }), sel, test));
         }
+        body.appendChild(switchRow('Expressive voice', 'Varies pitch and pacing so praise sounds happy and "try again" sounds gentle. Off = flat voice.', 'expressive', true,
+          function () { sampleVoice(sel ? sel.value : ''); }));
+        body.appendChild(switchRow('Full screen', 'Open in full screen on start', 'autoFullscreen', true));
         // profiles
         RG.profiles().forEach(function (p) {
           var d = RG.profileData(p.id), rk = RG.rank(p.id);
@@ -417,6 +514,10 @@
           }));
           body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Level' }), seg));
           body.appendChild(h('div', { class: 'note' }, rk.emoji + ' ' + rk.name + '   |   🪙 ' + d.lifetime + ' earned in total, ' + d.coins + ' to spend   |   ⭐ ' + d.stars + '   |   🎟️ ' + d.stickers.length + ' stickers   |   🦸 ' + d.powers.length + ' superpowers'));
+          var cs = RG.progress.challenge(p.id);
+          body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Challenge Island' }),
+            toggleSwitch(cs.override, function (v) { RG.progress.setUnlockOverride(v, p.id); render(); }, 'Unlock Challenge Island now for ' + p.name),
+            h('span', { class: 'gu-help', text: 'Unlock Challenge Island now (' + (cs.locked ? cs.done + ' of ' + cs.total + ' islands finished' : 'currently open') + ')' })));
           var rows = skillsList().map(function (sk) {
             var st = d.skills[sk];
             var acc = st && st.hist.length ? Math.round(100 * st.hist.reduce(function (a, b) { return a + b; }, 0) / st.hist.length) + '%' : '-';

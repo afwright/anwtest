@@ -45,6 +45,12 @@
 .cq-isle{background:#fff;border:4px solid #4cc3ff;border-radius:18px;padding:8px 14px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:800}
 .cq-isle b{font-size:2.2rem;line-height:1.1}
 .cq-isle small{font-size:.8rem;opacity:.7;font-weight:700}
+.cq-isle-btn{font-family:inherit;color:inherit;cursor:pointer;min-height:96px;min-width:140px;box-shadow:0 6px 0 rgba(10,60,110,.22);transition:transform .12s,box-shadow .12s;border-color:#ffb703}
+.cq-isle-btn:active{transform:translateY(4px) scale(.97);box-shadow:0 2px 0 rgba(10,60,110,.22)}
+.cq-isle-btn .cq-sail{font-size:.95rem;color:#1d6fd1;font-weight:800;opacity:1}
+.cq-isle-btn span{font-size:1.1rem}
+.cq-isle-btn[disabled]{opacity:.6;pointer-events:none}
+.cq-isles-tip{font-size:1rem;font-weight:700;opacity:.8;margin-top:-6px}
 @keyframes cq-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes cq-pop{0%{transform:scale(.3) rotate(-10deg)}70%{transform:scale(1.15) rotate(4deg)}100%{transform:scale(1) rotate(0)}}
 @media (prefers-reduced-motion:reduce){.cq-wrap *{animation-duration:.01s!important;animation-iteration-count:1!important}}
@@ -499,6 +505,14 @@
         return { id: id, title: (g && g.title) || fb.title, emoji: (g && g.emoji) || fb.emoji };
       }
 
+      // only islands that are registered for this profile's track can be recommended
+      function onTrack(id) {
+        if (id === 'captains-quiz') { return false; }
+        var ok = false;
+        try { (RG.games || []).forEach(function (g) { if (g && g.id === id && (!g.tracks || g.tracks.indexOf(track) >= 0)) { ok = true; } }); } catch (e) { ok = false; }
+        return ok;
+      }
+
       function endScreen() {
         root.innerHTML = '';
         var tier, title, bonus;
@@ -512,13 +526,16 @@
         Object.keys(bySkill).forEach(function (sk) {
           if (bySkill[sk][0] < bySkill[sk][1]) {
             (SKILL_ISLANDS[sk] || []).forEach(function (id) {
-              if (!seenI[id]) { seenI[id] = { info: islandInfo(id), skills: [] }; practice.push(seenI[id]); }
+              if (!seenI[id] && onTrack(id)) { seenI[id] = { info: islandInfo(id), skills: [] }; practice.push(seenI[id]); }
               seenI[id].skills.push(SKILL_NAMES[sk] || sk);
             });
           }
         });
         if (RG.quizLog && RG.quizLog.add) {
           try { RG.quizLog.add({ date: new Date().toISOString(), track: track, score: score, total: total, bySkill: bySkill }); } catch (e2) { /* ignore */ }
+        }
+        if (RG.progress && RG.progress.setRecommended) {
+          try { RG.progress.setRecommended(practice.map(function (p) { return p.info.id; })); } catch (e4) { /* ignore */ }
         }
         var box = el('div', 'cq-end');
         box.appendChild(el('div', 'cq-trophy', tier));
@@ -528,11 +545,20 @@
         box.appendChild(el('div', 'cq-isles-h', 'Islands to practice'));
         var isles = el('div', 'cq-isles');
         if (practice.length) {
+          box.appendChild(el('div', 'cq-isles-tip', 'Tap an island to sail there next!'));
           practice.forEach(function (p) {
-            var c = el('div', 'cq-isle');
+            var c = el('button', 'cq-isle cq-isle-btn', '', { type: 'button', 'aria-label': 'Sail to ' + p.info.title });
+            c.setAttribute('data-island', p.info.id);
             c.appendChild(el('b', '', p.info.emoji));
             c.appendChild(el('span', '', p.info.title));
             c.appendChild(el('small', '', p.skills.join(', ')));
+            c.appendChild(el('small', 'cq-sail', '⛵ Sail there'));
+            on(c, 'click', function () {
+              if (finished) { return; }
+              finished = true;
+              Array.prototype.forEach.call(root.querySelectorAll('button'), function (x) { x.disabled = true; });
+              ctx.finish({ next: p.info.id });
+            });
             isles.appendChild(c);
           });
         } else {

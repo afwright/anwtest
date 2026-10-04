@@ -41,15 +41,19 @@
     { text: 'i see a big sun.', emoji: '☀️', distractors: ['🌙', '⭐'], level: 1 },
     { text: 'the pig is in the mud.', emoji: '🐷', distractors: ['🐔', '🐮'], level: 1 },
     { text: 'a red bus can go.', emoji: '🚌', distractors: ['🚂', '✈️'], level: 1 },
+    { text: 'a hen sat on the nest.', emoji: '\uD83D\uDC14', distractors: ['\uD83D\uDC37', '\uD83D\uDC31'], level: 1 },
     { text: 'the frog can hop.', emoji: '🐸', distractors: ['🐢', '🐟'], level: 2 },
     { text: 'the ship is on the sea.', emoji: '🚢', distractors: ['🚗', '✈️'], level: 2 },
     { text: 'a fish can swim fast.', emoji: '🐟', distractors: ['🐦', '🐈'], level: 2 },
     { text: 'the crab is on the sand.', emoji: '🦀', distractors: ['🐙', '🐚'], level: 2 },
     { text: 'the duck swims in the pond.', emoji: '🦆', distractors: ['🐓', '🐦'], level: 2 },
+    { text: 'the duck swims. the duck can quack.', emoji: '\uD83E\uDD86', distractors: ['\uD83D\uDC13', '\uD83D\uDC1F'], level: 2 },
     { text: 'the boy has a kite. it is up in the sky.', emoji: '🪁', distractors: ['⚽', '🎸'], level: 3 },
     { text: 'we ate the cake. it was so good.', emoji: '🎂', distractors: ['🍕', '🍎'], level: 3 },
     { text: 'the snail is slow. it likes the rain.', emoji: '🐌', distractors: ['🐇', '🦋'], level: 3 },
-    { text: 'i can ride my bike. it has two wheels.', emoji: '🚲', distractors: ['🚗', '🛴'], level: 3 }
+    { text: 'i can ride my bike. it has two wheels.', emoji: '🚲', distractors: ['🚗', '🛴'], level: 3 },
+    { text: 'the crab is red. it can walk on the sand.', emoji: '\uD83E\uDD80', distractors: ['\uD83D\uDC19', '\uD83D\uDC1A'], level: 3 },
+    { text: 'the sun is hot. i will wear my hat.', emoji: '\u2600\uFE0F', distractors: ['\uD83C\uDF19', '\u2744\uFE0F'], level: 3 }
   ];
 
   function clean(w) { return String(w).toLowerCase().replace(/[^a-z0-9']/g, ''); }

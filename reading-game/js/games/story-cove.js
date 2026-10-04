@@ -31,7 +31,7 @@
     '.sc-next.sc-ready{animation:sc-pulse .8s ease 2;}',
     '@keyframes sc-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}',
     '.sc-q{font-size:1.9rem;font-weight:700;text-align:center;color:#1d2b4f;max-width:640px;}',
-    '.sc-opt{font-size:1.9rem;min-width:110px;padding:10px 18px;}'
+    '.sc-opt{font-family:inherit;font-size:1.9rem;min-width:110px;padding:10px 18px;}'
   ].join('\n');
 
   function injectStyle() {
@@ -200,7 +200,7 @@
           u = new window.SpeechSynthesisUtterance(text);
         } catch (e) { hasSS = false; runFallback(0); safetyTimer = setTimeout(finish, total + 400); return; }
         curUtter = u;
-        u.rate = BASE_RATE;
+        u.rate = BASE_RATE * ((RG.settings && RG.settings.speechRate) || 1);
         u.pitch = 1.1;
         u.lang = 'en-US';
         try {

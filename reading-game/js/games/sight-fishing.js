@@ -161,6 +161,7 @@
         locked = true;
         misses = 0;
         target = targets[roundNo];
+        container.dataset.target = target;
         sea.innerHTML = '';
         fishes = [];
         var nT = Math.random() < 0.4 ? 2 : 1;

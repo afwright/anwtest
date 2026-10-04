@@ -226,6 +226,7 @@
         var word = item.word;
         target = tokenize(word);
         current.word = word;
+        container.dataset.target = word;
         var emoji = item.emoji || (RG.emojiFor && RG.emojiFor(word)) || '❓';
 
         stage.innerHTML = '';

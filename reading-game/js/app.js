@@ -20,6 +20,8 @@
     root.innerHTML = '';
     root.appendChild(node);
     try { RG.coins.refresh(); } catch (e) { /* ignore */ }
+    // a rank-up earned mid-game celebrates once the child is off the game screen
+    if (!node.querySelector('.game-stage')) { try { RG.flushRankUp(4500); } catch (e) { /* ignore */ } }
   }
   function toast(msg) {
     var t = h('div', { class: 'pill', text: msg, style: 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:3000;max-width:90vw;text-align:center' });
@@ -33,7 +35,7 @@
   function modal(contentBuilder) {
     var m = h('div', { class: 'modal' });
     var sheet = h('div', { class: 'sheet' });
-    function close() { if (m.parentNode) m.remove(); }
+    function close() { if (m.parentNode) { m.remove(); if (typeof sheet._onclose === 'function') { try { sheet._onclose(); } catch (e) { /* ignore */ } } } }
     m.addEventListener('click', function (e) { if (e.target === m) close(); });
     sheet.appendChild(press(h('button', { class: 'btn round close', 'aria-label': 'Close', text: '✖' }), close));
     contentBuilder(sheet, close);
@@ -126,7 +128,7 @@
   }
 
   /* ---------- profile picker ---------- */
-  function pickScreen() {
+  function pickScreen(quiet) {
     var cards = RG.profiles().map(function (p) {
       return press(h('button', { class: 'captain-card' },
         h('div', { class: 'av', text: p.avatar }),
@@ -141,7 +143,7 @@
       h('h2', { text: 'Who is sailing today?' }),
       h('div', { class: 'captains' }, cards));
     show(s);
-    RG.speak('Who is sailing today?');
+    if (quiet !== true) RG.speak('Who is sailing today?');
   }
 
   /* ---------- map ---------- */
@@ -225,7 +227,10 @@
         });
       }
       render();
-      sheet._onclose = function () { };
+      sheet._onclose = function () { // show newly bought/worn items on the map boat
+        var old = document.querySelector('.map-body .map-boat');
+        if (old) old.replaceWith(boatEl());
+      };
     });
   }
 
@@ -434,6 +439,10 @@
         });
       }
       render();
+      sheet._onclose = function () { // name / avatar / track may have changed
+        if (root.querySelector('.map-body')) mapScreen(false);
+        else if (root.querySelector('.pick')) pickScreen(true);
+      };
     });
   }
 

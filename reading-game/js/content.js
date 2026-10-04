@@ -129,7 +129,7 @@
     { text: 'the fox can jump.',         emoji: '🦊', distractors: ['🐸', '🐱'], level: 1 },
     { text: 'I can see a red hat.',      emoji: '🎩', distractors: ['🧢', '🧦'], level: 1 },
     { text: 'the rat is in a bag.',      emoji: '🐀', distractors: ['🐱', '🦇'], level: 1 },
-    { text: 'a big ten is here.',        emoji: '🔟', distractors: ['6️⃣', '3️⃣'], level: 1 },
+    { text: 'the nut is in a bag.',      emoji: '🥜', distractors: ['🍎', '🐛'], level: 1 },
     { text: 'look, a bat!',              emoji: '🦇', distractors: ['🐀', '🐛'], level: 1 },
     // ---- level 2: digraphs, blends, Dolch primer ----
     { text: 'the frog jumps in the pond.', emoji: '🐸', distractors: ['🦆', '🐟'], level: 2 },

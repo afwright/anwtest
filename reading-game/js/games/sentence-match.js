@@ -24,7 +24,8 @@
     '.sm-read.sm-ready{animation:sm-ready .8s ease 2;}',
     '@keyframes sm-ready{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}',
     '.sm-choices{gap:14px;}',
-    '.sm-pic{font-size:3.6rem;line-height:1;min-width:104px;min-height:104px;padding:8px 12px;}'
+    '.sm-pic{font-size:3.6rem;line-height:1;min-width:104px;min-height:104px;padding:8px 12px;}',
+    '@media (max-width:480px){.sm-choices{gap:10px;}.sm-pic{font-size:3rem;min-width:94px;min-height:94px;padding:6px;}}'
   ].join('\n');
 
   function injectStyle() {

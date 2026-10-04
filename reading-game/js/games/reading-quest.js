@@ -287,7 +287,7 @@
   /* ---------------- the game ---------------- */
   RG.registerGame({
     id: 'reading-quest',
-    title: 'Why Read?',
+    title: 'Reading Quest',
     emoji: '🗺️',
     tracks: ['little', 'big'],
     skill: 'real-world',

@@ -27,6 +27,8 @@ body {
   background: linear-gradient(180deg, var(--sky) 0%, var(--sky2) 30%, #6cc8f2 31%, var(--sea) 55%, var(--sea-deep) 100%);
   background-attachment: fixed;
 }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, select, textarea { -webkit-user-select: text; user-select: text; }
 button { font-family: inherit; color: inherit; touch-action: manipulation; -webkit-user-select: none; user-select: none; cursor: pointer; }
 button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 7px var(--purple); }
 
@@ -75,9 +77,12 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 
 /* ---------- shared game classes ---------- */
 .game-stage {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 20px;
   width: 100%; height: 100%; padding: 16px; text-align: center; overflow-x: hidden; overflow-y: auto; position: relative;
 }
+/* centre when there is room, but let tall content scroll from the top (justify-content:center would clip it) */
+.game-stage > :first-child, .treasure > :first-child { margin-top: auto; }
+.game-stage > :last-child, .treasure > :last-child { margin-bottom: auto; }
 .prompt {
   font-size: 2rem; font-weight: 800; line-height: 1.25; color: var(--ink); background: rgba(255,255,255,.85);
   padding: 10px 22px; border-radius: 28px; max-width: 100%; box-shadow: var(--shadow);
@@ -125,14 +130,17 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .fx-conf { width: 12px; height: 18px; border-radius: 3px; }
 
 /* ---------- start screen ---------- */
-.start { align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 14px; }
+.start { align-items: center; justify-content: flex-start; overflow-y: auto; text-align: center; padding: 24px; gap: 14px; }
 .start h1 {
   margin: 0; font-size: clamp(2.2rem, 8vw, 4.2rem); line-height: 1.05; color: #fff;
   text-shadow: 0 5px 0 #0d6ebd, 0 8px 14px rgba(0,0,0,.25); letter-spacing: .02em;
 }
 .start .subtitle { font-size: 1.3rem; color: var(--ink); background: rgba(255,255,255,.75); padding: 6px 18px; border-radius: 20px; font-weight: 700; }
 .boat-hero { font-size: clamp(6rem, 24vw, 10rem); animation: bob 3.5s ease-in-out infinite; filter: drop-shadow(0 12px 6px rgba(0,0,0,.2)); line-height: 1; }
-.start .btn { font-size: 2rem; min-height: 96px; padding: 0 44px; animation: pulse 1.6s ease-in-out infinite; }
+.start .btn { font-size: 2rem; min-height: 96px; padding: 0 44px; animation: pulse 1.6s ease-in-out infinite; max-width: 100%; white-space: nowrap; }
+@media (max-width: 420px) { .start .btn { font-size: 1.6rem; padding: 0 28px; } }
+.start .boat-hero { margin-top: auto; }
+.start .btn { margin-bottom: auto; }
 @keyframes pulse { 50% { transform: scale(1.06); } }
 
 /* ---------- top bar ---------- */
@@ -155,8 +163,9 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .iconbtn.holding .hold-ring { opacity: 1; }
 
 /* ---------- profile picker ---------- */
-.pick { align-items: center; justify-content: center; gap: 22px; padding: 20px; text-align: center; }
-.pick h2 { margin: 0; font-size: 2.2rem; color: #fff; text-shadow: 0 4px 0 #0d6ebd; }
+.pick { align-items: center; justify-content: flex-start; overflow-y: auto; gap: 22px; padding: 20px; text-align: center; }
+.pick h2 { margin: auto 0 0; font-size: 2.2rem; color: var(--ink); background: rgba(255,255,255,.9); padding: 8px 24px; border-radius: 32px; box-shadow: var(--shadow); }
+.pick .captains { margin-bottom: auto; }
 .captains { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; }
 .captain-card {
   width: min(300px, 80vw); padding: 22px 16px; border-radius: 40px; background: #fff; border: 8px solid var(--sun);
@@ -174,6 +183,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .map-boat svg { width: 100%; height: 100%; overflow: visible; }
 .path { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; padding: 6px 0 30px; position: relative; }
 .island-row { display: flex; }
+@media (max-height: 800px) { .map-boat { width: 170px; height: 140px; } .path { gap: 2px; } .island { min-height: 104px; } }
 .island-row.l { justify-content: flex-start; padding-left: 4%; }
 .island-row.r { justify-content: flex-end; padding-right: 4%; }
 .island-row.m { justify-content: center; }
@@ -194,6 +204,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .island.challenge .name { background: #fff3c4; }
 .toolbar { display: flex; justify-content: center; gap: 12px; padding: 8px 12px 14px; flex-wrap: wrap; }
 .toolbar .btn { font-size: 1.15rem; padding: 0 20px; }
+@media (max-width: 480px) { .toolbar { gap: 6px; padding: 6px 6px 12px; flex-wrap: nowrap; } .toolbar .btn { font-size: .92rem; padding: 0 9px; gap: 4px; min-height: 64px; border-width: 4px; min-width: 0; } }
 .empty-note { background: rgba(255,255,255,.9); padding: 18px 24px; border-radius: 28px; font-size: 1.3rem; font-weight: 700; margin: 30px 16px; text-align: center; }
 
 /* ---------- game host ---------- */
@@ -210,8 +221,8 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .crashed { padding: 30px; text-align: center; font-size: 1.5rem; font-weight: 700; background: #fff; border-radius: 28px; margin: 24px; }
 
 /* ---------- treasure ---------- */
-.treasure { align-items: center; justify-content: center; text-align: center; gap: 12px; padding: 16px; overflow-y: auto; }
-.treasure h2 { margin: 0; font-size: 2.2rem; color: #fff; text-shadow: 0 4px 0 #0d6ebd; }
+.treasure { align-items: center; justify-content: flex-start; text-align: center; gap: 12px; padding: 16px; overflow-y: auto; }
+.treasure h2 { margin: 0; font-size: 2.2rem; color: var(--ink); background: rgba(255,255,255,.9); padding: 8px 24px; border-radius: 32px; box-shadow: var(--shadow); max-width: 100%; }
 .chest { width: 200px; height: 170px; }
 .chest { overflow: visible; margin-top: 46px; }
 .chest .lid { transform-origin: 20px 70px; transition: transform .8s cubic-bezier(.3,1.5,.5,1); }
@@ -221,6 +232,14 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .rewards { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .reward { background: #fff; border-radius: 28px; padding: 10px 20px; font-size: 1.6rem; font-weight: 800; box-shadow: var(--shadow); animation: pop .6s ease both; }
 .reward .big { font-size: 3.4rem; display: block; line-height: 1.1; }
+@media (max-width: 480px), (max-height: 700px) {
+  .treasure { gap: 8px; }
+  .treasure h2 { font-size: 1.9rem; }
+  .chest { width: 150px; height: 128px; margin-top: 30px; }
+  .reward { padding: 6px 12px; font-size: 1.2rem; border-radius: 22px; }
+  .reward .big { font-size: 2.4rem; }
+  .rewards { gap: 8px; }
+}
 .treasure .btns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
 
 /* ---------- panels / modals ---------- */

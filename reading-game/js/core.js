@@ -186,7 +186,11 @@
       // tick counter after fly-in
       setTimeout(updateCounters, 700);
       var after = rankIndex(d.lifetime);
-      if (after > before) setTimeout(function () { RG.rankUp(after); }, 1400);
+      // never interrupt a game in progress: hold the celebration until the stage is gone
+      if (after > before) {
+        if (document.querySelector('.game-stage')) RG._pendingRank = after;
+        else setTimeout(function () { RG.rankUp(after); }, 1400);
+      }
       void reason;
     },
     spend: function (n) {
@@ -194,6 +198,11 @@
       d.coins -= n; save(); updateCounters(); return true;
     },
     refresh: updateCounters
+  };
+  RG.flushRankUp = function (delay) {
+    var idx = RG._pendingRank; if (idx == null) return;
+    RG._pendingRank = null;
+    setTimeout(function () { RG.rankUp(idx); }, delay || 1400);
   };
   RG.rankUp = function (idx) {
     var r = RANKS[idx];

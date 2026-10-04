@@ -9,8 +9,8 @@
   var BASE_RATE = 0.85;
   var CSS = [
     '.sc-stage{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:flex-start;padding:8px 10px 16px;width:100%;box-sizing:border-box;}',
-    '.sc-title{font-size:1.3rem;font-weight:700;color:#1d2b4f;text-align:center;}',
-    '.sc-pg{font-size:1rem;color:#4a5a80;}',
+    '.sc-title{font-size:1.3rem;font-weight:700;color:#1d2b4f;text-align:center;background:rgba(255,255,255,.88);padding:2px 16px;border-radius:18px;}',
+    '.sc-pg{font-size:1rem;color:#2b3a63;background:rgba(255,255,255,.88);padding:1px 14px;border-radius:14px;}',
     '.sc-page{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:640px;animation:sc-in .45s ease;}',
     '@keyframes sc-in{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}',
     '.sc-art{font-size:5.5rem;line-height:1;}',

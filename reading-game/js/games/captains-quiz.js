@@ -100,7 +100,7 @@
     'letter-pop': { title: 'Letter Pop', emoji: '🎈' }, 'sound-hunt': { title: 'Sound Hunt', emoji: '🔍' },
     'rhyme-boat': { title: 'Rhyme Boat', emoji: '⛵' }, 'word-builder': { title: 'Word Builder', emoji: '🧱' },
     'sight-fishing': { title: 'Sight Fishing', emoji: '🎣' }, 'sentence-match': { title: 'Sentence Match', emoji: '🖼️' },
-    'story-cove': { title: 'Story Cove', emoji: '📖' }, 'reading-quest': { title: 'Why Read?', emoji: '🗺️' }
+    'story-cove': { title: 'Story Cove', emoji: '📖' }, 'reading-quest': { title: 'Reading Quest', emoji: '🗺️' }
   };
   var SKILL_ISLANDS = {
     letters: ['letter-pop'], 'letter-sounds': ['letter-pop', 'sound-hunt'], 'beginning-sounds': ['sound-hunt'],
@@ -204,7 +204,9 @@
       return { skill: 'letter-sounds', prompt: q, ask: function () { return say(q); }, opts: letterOpts(r), reveal: 'the letter ' + t.letter };
     };
     G['beginning-sounds'] = function () {
-      var r = pickLetters(nOpts), t = r.target;
+      var r = pickLetters(nOpts), t = r.target, again = 0;
+      // x is taught with "fox", which does not START with x: pick another letter
+      while (String(t.word).charAt(0).toLowerCase() !== t.letter && again++ < 20) { r = pickLetters(nOpts); t = r.target; }
       var q = t.word + '. What sound does ' + t.word + ' start with?';
       return { skill: 'beginning-sounds', prompt: q, ask: function () { return say(q); },
         show: el('div', 'big-emoji', t.emoji), opts: letterOpts(r), reveal: 'the letter ' + t.letter };

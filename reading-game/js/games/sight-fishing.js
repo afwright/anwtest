@@ -147,7 +147,9 @@
         el.querySelector('.sf-word').textContent = word;
         el.style.animationName = dir === 'l' ? 'sf-l' : 'sf-r';
         el.style.animationDuration = dur.toFixed(1) + 's';
-        el.style.animationDelay = stagger ? ('-' + (Math.random() * dur * 0.9).toFixed(1) + 's') : '0s';
+        // the fish being asked for starts well inside the sea so the child never waits for it to swim in
+        var start = isTarget ? 0.2 + Math.random() * 0.3 : Math.random() * 0.9;
+        el.style.animationDelay = stagger ? ('-' + (start * dur).toFixed(1) + 's') : '0s';
         var f = { el: el, lane: lane, word: word, isTarget: isTarget, dir: dir, done: false };
         el.addEventListener('click', function () { onFish(f); });
         sea.appendChild(el);

@@ -69,7 +69,7 @@
   function load() {
     var s = null;
     try { var raw = localStorage.getItem(KEY); if (raw) s = JSON.parse(raw); } catch (e) { s = null; }
-    if (!s || typeof s !== 'object' || !Array.isArray(s.profiles)) s = defaultState();
+    if (!s || typeof s !== 'object' || !Array.isArray(s.profiles) || !s.profiles.length) s = defaultState();
     s.data = s.data || {}; s.settings = s.settings || { speechRate: 1, voiceURI: '' };
     if (typeof s.settings.autoFullscreen !== 'boolean') s.settings.autoFullscreen = true;
     if (typeof s.settings.expressive !== 'boolean') s.settings.expressive = true;
@@ -645,7 +645,7 @@
   };
   var PRAISE = ['Great job!', 'You did it!', 'Awesome reading!', 'Super!', 'Fantastic!', 'Wonderful!', 'Hooray!', 'Well done, captain!', 'Brilliant!',
     'Woohoo!', 'Yes! Nailed it!', "Shiver me timbers, that's right!", 'High five, Captain!', 'Ahoy, you got it!', 'Look at you go!',
-    'Spot on, sailor!', 'Amazing! You are a reading star!', 'Yo ho ho, that is correct!', 'Super duper!', 'You make it look easy!',
+    'Spot on, sailor!', 'Amazing! You are a reading star!', 'Yo ho ho, that is correct!', 'Super duper!', 'You make it look smooth!',
     'Treasure-tastic!', 'That was perfect!', 'Wow, great thinking!', 'Hip hip hooray!', "You're a star, matey!"];
   RG.praise = function () { return RG.sample(PRAISE); };
   RG.praiseCount = PRAISE.length;

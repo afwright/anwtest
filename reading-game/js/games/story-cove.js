@@ -2,7 +2,9 @@
    (reads aloud, taps "Done!"), then gets a short praise. After the story: comprehension questions
    (each question has a type: literal / why / sequence / vocab / inference).
    Rereading a finished story earns the Smooth Sailor badge (2nd and 3rd read).
-   At higher levels a "Chapter book" shelf (RG.content.serial) unlocks one chapter at a time. */
+   At higher levels a "Chapter book" shelf (RG.content.serial) unlocks one chapter at a time.
+   Below that, the same book is offered as "listen along": the game reads each page aloud (karaoke) and he reads
+   one short "Your line" (serial chapter kidLines) himself. Listen progress is kept apart from read-yourself progress. */
 (function () {
   'use strict';
   var RG = window.RG;
@@ -56,6 +58,13 @@
     '.sc-gcard.sc-badge{border-color:#f4a62a;background:#fff3c4;}',
     '.sc-gcard.sc-beat{border-color:#2fb457;background:#e6f9ec;}',
     '.sc-gcard.sc-tease{border-color:#8a5cf5;background:#f0e9ff;}',
+    '.sc-line{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;background:rgba(255,248,220,.9);border:3px dashed #f4a62a;border-radius:22px;padding:8px 10px;box-sizing:border-box;}',
+    '.sc-linecard{border-color:#f4a62a;padding:8px 10px;}',
+    '.sc-lw{cursor:default;}',
+    '.sc-listenpg .sc-art{font-size:3rem;}',
+    '.sc-listenpg .sc-card:not(.sc-linecard){padding:8px 10px;gap:0 6px;}',
+    '.sc-listenpg .sc-card:not(.sc-linecard) .sc-w{font-size:1.25rem;letter-spacing:.03em;padding:0 2px;min-width:0;}',
+    '.sc-again{display:block;font-size:.9rem;font-weight:700;color:#7a4a00;}',
     '@media (max-width:420px){.sc-w{font-size:1.6rem;padding:2px 4px;min-width:34px}.sc-art{font-size:4rem}.sc-q,.sc-opt{font-size:1.6rem}}'
   ].join('\n');
 
@@ -144,7 +153,7 @@
     try { if (RG.progress && typeof RG.progress.get === 'function') { hasCore = true; v = RG.progress.get(STATE_KEY); } } catch (e) { v = null; }
     if (v == null && !hasCore) { try { v = JSON.parse(localStorage.getItem('rg_sc_' + profId()) || 'null'); } catch (e2) { v = null; } }
     if (!v || typeof v !== 'object') { v = {}; }
-    v.reads = v.reads || {}; v.best = v.best || {}; v.serial = v.serial || {};
+    v.reads = v.reads || {}; v.best = v.best || {}; v.serial = v.serial || {}; v.listen = v.listen || {};
     v.total = v.total || 0; v.chapters = v.chapters || 0;
     return v;
   }
@@ -171,6 +180,9 @@
       var serial = RG.content && RG.content.serial;
       var hasSerial = !!(serial && Array.isArray(serial.chapters) && serial.chapters.length && serial.chapters.every(validStory));
       var offerSerial = hasSerial && level >= 4;
+      var hasLines = hasSerial && serial.chapters.every(function (c) { return Array.isArray(c.kidLines) && c.kidLines.length === c.pages.length; });
+      var offerListen = hasLines && level < 4;
+      var shelfListen = false;
 
       var book, pages, P, qs, qn, pagesRounds;
       var done = 0;                // roundDone calls so far
@@ -225,21 +237,22 @@
       }
 
       function makeBook(s, kind, idx) {
-        var id = kind === 'chapter' ? (serial.id || 'serial') + ':' + (idx + 1) : storyId(s);
-        return { id: id, kind: kind, idx: idx, title: s.title || (kind === 'chapter' ? 'Chapter ' + (idx + 1) : 'Story'),
-          pages: s.pages, questions: s.questions || [], level: s.level || level };
+        var id = kind === 'chapter' ? (serial.id || 'serial') + ':' + (idx + 1)
+          : (kind === 'listen' ? (serial.id || 'serial') + ':listen:' + (idx + 1) : storyId(s));
+        return { id: id, kind: kind, idx: idx, title: s.title || (kind !== 'story' ? 'Chapter ' + (idx + 1) : 'Story'),
+          pages: s.pages, questions: s.questions || [], level: s.level || level, lines: s.kidLines || [] };
       }
 
       function begin(b) {
         stopReading();
         book = b; pages = b.pages; P = pages.length;
-        qs = pickQuestions(b.questions, Math.max(0, Math.min(3, rounds - 1)));
+        qs = pickQuestions(b.questions, Math.max(0, Math.min(b.kind === 'listen' ? 1 : 3, rounds - 1)));
         qn = qs.length; pagesRounds = rounds - qn;
         done = 0; pageIdx = 0; qIdx = 0; readMs = 0;
         prevBest = state.best[b.id] || 0;
         readStart = Date.now();
         container.dataset.book = b.id;
-        showPage();
+        if (b.kind === 'listen') { showListenPage(); } else { showPage(); }
       }
 
       /* ---------- karaoke reading ---------- */
@@ -374,6 +387,7 @@
         var lastPage = pageIdx === P - 1;
         var nextLabel = lastPage ? (qn > 0 ? 'Questions ➡' : 'Finish ⭐') : 'Next page ➡';
         var rereading = (state.reads[book.id] || 0) > 0;
+        var nudge = book.kind === 'chapter' && pageIdx === 0 && listenDone().indexOf(book.idx) >= 0 && (state.reads[book.id] || 0) === 0;
 
         var listenBtn = RG.el('button', { class: 'btn sc-listen', type: 'button', text: '🔊 Listen' });
         var turnBtn = RG.el('button', { class: 'btn sc-turnbtn', type: 'button', text: '🎤 My turn' });
@@ -450,6 +464,7 @@
         var head = [];
         head.push(RG.el('div', { class: 'sc-title', text: book.title }));
         head.push(RG.el('div', { class: 'sc-pg', text: 'page ' + (pageIdx + 1) + ' of ' + P }));
+        if (nudge) { head.push(RG.el('div', { class: 'sc-chip sc-nudge', text: '🎧 You know this story, now read it yourself!' })); }
         if (beatOn() && prevBest && pageIdx === 0) {
           head.push(RG.el('div', { class: 'sc-chip', text: '⏱ Your time to beat: ' + fmtTime(prevBest) }));
         }
@@ -460,17 +475,133 @@
           parts.push(RG.el('button', { class: 'btn sc-chapterbtn', type: 'button', text: '📚 Chapter book',
             on: { click: function () { if (!dead) { showShelf(); } } } }));
         }
+        if (offerListen && book.kind === 'story' && pageIdx === 0 && done === 0) {
+          parts.push(RG.el('button', { class: 'btn sc-chapterbtn sc-listenbook', type: 'button', text: '📚 Chapter book: listen along',
+            on: { click: function () { if (!dead) { showShelf(true); } } } }));
+        }
         var wrap = RG.el('div', { class: 'sc-page' }, parts);
         stage.appendChild(wrap);
 
         ctx.onReplay = listen;
         if (pageIdx === 0) {
-          var intro = book.title + '. ' + (rereading ? 'Let us read it again. Try to make it smooth!' : 'Tap Listen to hear it, or tap My turn to read it yourself.');
+          var intro = (nudge ? 'You know this story, now read it yourself! ' : '') + book.title + '. ' + (rereading ? 'Let us read it again. Try to make it smooth!' : 'Tap Listen to hear it, or tap My turn to read it yourself.');
           if (offerSerial && book.kind === 'story') { intro += ' Or pick the Chapter book.'; }
+          if (offerListen && book.kind === 'story') { intro += ' Or listen along to the Chapter book.'; }
           quick(intro, { mood: 'story' });
         } else {
           quick('Read the page.', { mood: 'story' });
         }
+      }
+
+      /* ---------- listen-along page: the game reads, he reads his own line ---------- */
+      function showListenPage() {
+        if (dead) { return; }
+        stopReading();
+        locked = false;
+        container.dataset.mode = 'page';
+        var pg = pages[pageIdx], lineText = String(book.lines[pageIdx] || '');
+        stage.innerHTML = '';
+        var words = pg.text.split(/\s+/).filter(function (w) { return w; });
+        spans = [];
+        var card = RG.el('div', { class: 'sc-card' });
+        words.forEach(function (w) {
+          var sp = RG.el('button', { class: 'sc-w word', type: 'button', text: w });
+          sp.addEventListener('click', function () {
+            if (dead) { return; }
+            stopReading();
+            sp.classList.add('sc-hl');
+            later(function () { sp.classList.remove('sc-hl'); }, 700);
+            quick(clean(w) || w);
+          });
+          spans.push(sp);
+          card.appendChild(sp);
+        });
+        var art = RG.el('div', { class: 'sc-art float', text: pg.emoji || '📖' });
+        var lastPage = pageIdx === P - 1;
+        var lbl = RG.el('span', { class: 'sc-lbl', text: lastPage ? (qn > 0 ? 'Question ➡' : 'Finish ⭐') : 'Next page ➡' });
+        var nextBtn = RG.el('button', { class: 'btn primary sc-next sc-wait', type: 'button', disabled: 'disabled' }, RG.el('span', { class: 'sc-fill' }), lbl);
+        var listenBtn = RG.el('button', { class: 'btn sc-listen', type: 'button', text: '🔊 Listen again' });
+        var turnBtn = RG.el('button', { class: 'btn sc-turnbtn', type: 'button', text: '🎤 My turn' });
+        var doneBtn = RG.el('button', { class: 'btn primary sc-donebtn', type: 'button', text: '✅ Done!', style: 'display:none' });
+        var hearBtn = RG.el('button', { class: 'btn sc-hearline', type: 'button', text: '🔊 Hear my line', style: 'display:none' });
+        var banner = RG.el('div', { class: 'sc-banner', text: '🎤 Your turn! Read your line out loud.', style: 'display:none' });
+        var praiseEl = RG.el('div', { class: 'sc-praise', text: '' });
+        var lineCard = RG.el('div', { class: 'sc-card sc-linecard' });
+        var lineSpans = [];
+        lineText.split(/\s+/).filter(function (w) { return w; }).forEach(function (w) {
+          var ls = RG.el('span', { class: 'sc-w word sc-lw', text: w });   // not tappable until he has tried it
+          lineSpans.push(ls);
+          lineCard.appendChild(ls);
+        });
+        var enabled = false, turning = false, tried = false, lineBox = null;
+        function enableNext() {
+          if (enabled || dead) { return; }
+          enabled = true;
+          nextBtn.removeAttribute('disabled'); nextBtn.disabled = false;
+          nextBtn.classList.remove('sc-wait'); nextBtn.classList.add('sc-ready');
+          var f = nextBtn.querySelector('.sc-fill'); if (f) { f.style.width = '100%'; }
+        }
+        later(enableNext, 20000); // never stuck on a page
+        function afterListen() {
+          if (turning || tried) { return; }
+          turnBtn.classList.add('sc-glow');
+          try { lineBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e6) { /* ignore */ }
+          quick('Now read your line! Tap My turn.', { mood: 'story' });
+        }
+        function listen() { if (!dead) { turnBtn.classList.remove('sc-glow'); readWords(words, afterListen); } }
+        listenBtn.addEventListener('click', listen);
+        turnBtn.addEventListener('click', function () {
+          if (dead) { return; }
+          stopReading();
+          turning = true;
+          turnBtn.classList.remove('sc-glow');
+          lineCard.classList.add('sc-mine');
+          banner.style.display = ''; doneBtn.style.display = ''; turnBtn.style.display = 'none';
+          praiseEl.textContent = '';
+          quick('Your turn! Read your line out loud. Tap Done when you finish.', { mood: 'happy' });
+        });
+        doneBtn.addEventListener('click', function () {
+          if (dead || !turning) { return; }
+          turning = false; tried = true;
+          lineCard.classList.remove('sc-mine');
+          banner.style.display = 'none'; doneBtn.style.display = 'none';
+          turnBtn.style.display = ''; turnBtn.textContent = '🎤 Read it again';
+          hearBtn.style.display = '';
+          lineSpans.forEach(function (ls) {   // now words can be tapped to hear them
+            ls.classList.add('sc-tap');
+            ls.addEventListener('click', function () { if (!dead) { stopReading(); quick(clean(ls.textContent) || ls.textContent); } });
+          });
+          var line = RG.praise();
+          praiseEl.textContent = '🌟 ' + line;
+          RG.sfx && RG.sfx.pop && RG.sfx.pop();
+          say(line, { mood: 'excited' });
+          enableNext();
+          nextBtn.classList.remove('sc-ready'); void nextBtn.offsetWidth; nextBtn.classList.add('sc-ready');
+        });
+        hearBtn.addEventListener('click', function () { if (!dead && tried) { stopReading(); quick(lineText, { mood: 'happy' }); } });
+        nextBtn.addEventListener('click', function () {
+          if (!enabled || locked || dead) { return; }
+          locked = true;
+          stopReading();
+          var n = dotsForPage(pageIdx);
+          for (var k = 0; k < n && done < rounds; k++) { bump(); }
+          RG.sfx && RG.sfx.pop && RG.sfx.pop();
+          if (!lastPage) { pageIdx++; showListenPage(); }
+          else {
+            readMs = Date.now() - readStart;
+            if (qn > 0) { qIdx = 0; showQuestion(); } else { finishAll(); }
+          }
+        });
+        lineBox = RG.el('div', { class: 'sc-line' },
+          RG.el('div', { class: 'sc-chip', text: '⭐ Your line' }), lineCard, banner,
+          RG.el('div', { class: 'sc-row' }, turnBtn, doneBtn, hearBtn), praiseEl);
+        stage.appendChild(RG.el('div', { class: 'sc-page sc-listenpg' }, [
+          RG.el('div', { class: 'sc-title', text: book.title }),
+          RG.el('div', { class: 'sc-pg', text: '🎧 page ' + (pageIdx + 1) + ' of ' + P }),
+          art, card, RG.el('div', { class: 'sc-row' }, listenBtn), lineBox, RG.el('div', { class: 'sc-row' }, nextBtn)]));
+        ctx.onReplay = listen;
+        // the tap that opened this page is the user gesture, so the reading can start right away
+        readWords(words, afterListen);
       }
 
       /* ---------- chapter book shelf ---------- */
@@ -478,22 +609,30 @@
         var s = state.serial[serial.id];
         return (s && Array.isArray(s.done)) ? s.done : [];
       }
-      function chapterUnlocked(i) { return i === 0 || serialDone().indexOf(i - 1) >= 0; }
+      function listenDone() {
+        var s = state.listen[serial.id];
+        return (s && Array.isArray(s.done)) ? s.done : [];
+      }
+      function shelfDone() { return shelfListen ? listenDone() : serialDone(); }
+      function chapterUnlocked(i) { return i === 0 || shelfDone().indexOf(i - 1) >= 0; }
 
-      function showShelf() {
+      function showShelf(listenMode) {
         if (dead) { return; }
         stopReading();
+        shelfListen = !!listenMode;
         container.dataset.mode = 'shelf';
         stage.innerHTML = '';
-        var dn = serialDone(), nextIdx = -1;
+        var dn = shelfDone(), nextIdx = -1, ld = listenDone();
         for (var i = 0; i < serial.chapters.length; i++) { if (dn.indexOf(i) < 0) { nextIdx = i; break; } }
         var list = RG.el('div', { class: 'sc-shelf' });
         serial.chapters.forEach(function (ch, i) {
           var isDone = dn.indexOf(i) >= 0, open = chapterUnlocked(i);
+          var again = !shelfListen && ld.indexOf(i) >= 0 && !isDone; // listened to it before: time to read it himself
           var cls = 'sc-ch' + (isDone ? ' sc-done-ch' : '') + (!open ? ' sc-locked' : '') + (i === nextIdx ? ' sc-next-ch' : '');
           var b = RG.el('button', { class: cls, type: 'button', 'aria-disabled': open ? 'false' : 'true', 'data-ch': String(i + 1) },
             RG.el('span', { class: 'sc-chi', text: isDone ? '✅' : (open ? '📖' : '🔒') }),
-            RG.el('span', { text: 'Chapter ' + (i + 1) + ': ' + (ch.title || '') }));
+            RG.el('span', {}, 'Chapter ' + (i + 1) + ': ' + (ch.title || ''),
+              again ? RG.el('small', { class: 'sc-again', text: '🎧 You know this story, now read it yourself!' }) : null));
           b.addEventListener('click', function () {
             if (dead) { return; }
             if (!open) {
@@ -501,16 +640,18 @@
               quick('Finish chapter ' + i + ' first!', { mood: 'gentle' });
               return;
             }
-            begin(makeBook(ch, 'chapter', i));
+            begin(makeBook(ch, shelfListen ? 'listen' : 'chapter', i));
           });
           list.appendChild(b);
         });
         var back = RG.el('button', { class: 'btn', type: 'button', text: '⬅ Back to my story', on: { click: function () { if (!dead) { showPage(); } } } });
         stage.appendChild(RG.el('div', { class: 'big-emoji', text: '📚' }));
         stage.appendChild(RG.el('div', { class: 'sc-title', text: serial.title || 'Chapter book' }));
+        if (shelfListen) { stage.appendChild(RG.el('div', { class: 'sc-chip', text: '🎧 Listen along' })); }
         stage.appendChild(list);
         stage.appendChild(back);
-        var msg = nextIdx < 0 ? 'You finished the whole book! Tap a chapter to read it again.' : 'Pick a chapter. Read them in order!';
+        var msg = nextIdx < 0 ? 'You finished the whole book! Tap a chapter to ' + (shelfListen ? 'hear it again.' : 'read it again.') : (shelfListen ? 'Pick a chapter and listen along. Go in order!' : 'Pick a chapter. Read them in order!');
+        if (!shelfListen && nextIdx >= 0 && ld.indexOf(nextIdx) >= 0) { msg += ' You know this story, now read it yourself!'; }
         ctx.onReplay = function () { quick((serial.title || 'Chapter book') + '. ' + msg, { mood: 'story' }); };
         quick((serial.title || 'Chapter book') + '. ' + msg, { mood: 'story' });
       }
@@ -601,7 +742,7 @@
       }
 
       /* ---------- finishing: reread badge, best time, chapter unlock, cliffhanger ---------- */
-      function teaserFor(ch, idx) {
+      function teaserFor(ch, idx, listenMode) {
         if (idx >= serial.chapters.length - 1) { return 'The end! You finished the whole book. What a great adventure!'; }
         var t = ch && (ch.teaser || ch.cliffhanger);
         if (!t) {
@@ -611,7 +752,7 @@
           var ls = sents.length ? sents[sents.length - 1] : '';
           t = !ls ? 'What happens next?' : (/\?$/.test(ls) ? ls : ls + ' What happens next?');
         }
-        return t + ' Read Chapter ' + (idx + 2) + ' to find out!';
+        return t + (listenMode ? ' Find out in chapter ' + (idx + 2) + '!' : ' Read Chapter ' + (idx + 2) + ' to find out!');
       }
 
       function finishAll() {
@@ -622,15 +763,25 @@
         var prev = state.reads[id] || 0, n = prev + 1;
         var info = { n: n, badge: false, beat: null, teaser: null, bookDone: false };
         state.reads[id] = n;
-        if (book.kind === 'chapter') { state.chapters++; } else { state.total++; }
+        if (book.kind === 'chapter') { state.chapters++; } else if (book.kind === 'listen') { state.listened = (state.listened || 0) + 1; } else { state.total++; }
         // Smooth Sailor: repeated reading builds fluency, so reward the 2nd and 3rd read
-        if (n === 2 || n === 3) {
+        if (book.kind !== 'listen' && (n === 2 || n === 3)) {
           info.badge = true;
           try { if (RG.progress && typeof RG.progress.badge === 'function') { RG.progress.badge('smooth-sailor', 'Smooth Sailor', '⛵'); } } catch (e) { /* ignore */ }
         }
         // beat your own time (only ever shown when switched on in the grown-ups panel)
         if (beatOn() && prevBest && readMs < prevBest) { info.beat = { prev: prevBest, now: readMs }; }
         if (!state.best[id] || readMs < state.best[id]) { state.best[id] = readMs; }
+        if (book.kind === 'listen') {
+          var ls = state.listen[serial.id] || (state.listen[serial.id] = { done: [] });
+          if (!Array.isArray(ls.done)) { ls.done = []; }
+          if (ls.done.indexOf(book.idx) < 0) { ls.done.push(book.idx); }
+          info.teaser = teaserFor(serial.chapters[book.idx], book.idx, true);
+          if (serial.chapters.every(function (c, ci) { return ls.done.indexOf(ci) >= 0; })) {
+            info.bookDone = true; info.listener = true;
+            try { if (RG.progress && typeof RG.progress.badge === 'function') { RG.progress.badge('story-listener', 'Story Listener', '🎧'); } } catch (e5) { /* ignore */ }
+          }
+        }
         if (book.kind === 'chapter') {
           var s = state.serial[serial.id] || (state.serial[serial.id] = { done: [] });
           if (!Array.isArray(s.done)) { s.done = []; }
@@ -651,7 +802,9 @@
         container.dataset.mode = 'end';
         stage.innerHTML = '';
         var lines = [];
-        var growth = book.kind === 'chapter'
+        var growth = book.kind === 'listen'
+          ? 'You listened to chapter ' + (book.idx + 1) + ' and read ' + book.lines.length + ' lines yourself!'
+          : book.kind === 'chapter'
           ? 'You finished chapter ' + (book.idx + 1) + '!'
           : (state.total <= 1 ? 'You read your first story!' : 'You have read ' + state.total + ' stories!');
         var box = RG.el('div', { class: 'sc-end' });
@@ -664,6 +817,11 @@
           box.appendChild(RG.el('div', { class: 'sc-gcard sc-badge', text: '⛵ ' + bm }));
           lines.push(bm);
         }
+        if (info.listener) {
+          var lm = 'Story Listener! You heard the whole Secret of Gull Island!';
+          box.appendChild(RG.el('div', { class: 'sc-gcard sc-badge', text: '🎧 ' + lm }));
+          lines.push(lm);
+        }
         if (info.beat) {
           var tm = 'You beat your time! ' + fmtTime(info.beat.prev) + ' to ' + fmtTime(info.beat.now) + '.';
           box.appendChild(RG.el('div', { class: 'sc-gcard sc-beat', text: '⏱ ' + tm }));
@@ -672,8 +830,18 @@
         if (info.teaser) {
           box.appendChild(RG.el('div', { class: 'sc-gcard sc-tease', text: '📖 ' + info.teaser }));
         }
-        var fin = RG.el('button', { class: 'btn primary', type: 'button', text: 'Finish ⭐' });
         var finished = false;
+        var fin = RG.el('button', { class: 'btn primary', type: 'button', text: 'Finish ⭐' });
+        if (offerListen || offerSerial) {
+          // the voyage is over (all rounds counted), so the shelf opens at the start of the next voyage
+          box.appendChild(RG.el('button', { class: 'btn sc-chapterbtn', type: 'button', text: offerListen ? '📚 Chapter book: listen along' : '📚 Chapter book',
+            on: { click: function () {
+              if (dead || finished) { return; }
+              finished = true; stopReading();
+              RG._scShelf = Date.now();   // "Play again" on the treasure screen then opens the shelf
+              ctx.finish();
+            } } }));
+        }
         fin.addEventListener('click', function () {
           if (finished || dead) { return; }
           finished = true; fin.disabled = true;
@@ -690,7 +858,10 @@
           .then(function () { if (!dead && info.teaser) { return say(info.teaser, { mood: 'story' }); } });
       }
 
+      var wantShelf = (offerListen || offerSerial) && RG._scShelf && (Date.now() - RG._scShelf) < 30000;
+      RG._scShelf = 0;
       begin(makeBook(pickStory(), 'story', 0));
+      if (wantShelf) { showShelf(offerListen); }
 
       return function cleanup() {
         dead = true;

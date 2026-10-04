@@ -688,12 +688,13 @@
     var vce = l2.filter(function (w) { return /[aeiou][^aeiou]e$/.test(w.word); });
     var blend = l2.filter(function (w) { return vce.indexOf(w) < 0; });
     var all = cvc.concat(l1, l2, l3, l4, l5);
-    var defs = [[cvc, 1], [l1, 1], [blend, 2], [vce, 2], [l3, 3], [l4, 4], [l5, 5]];
+    void vce; void blend; void l5;
+    var defs = [[cvc, 1], [l2.filter(function (w) { return /^(fr|cr|dr|tr|gr|br|fl|cl|bl|st|sn|sp)[aeiou]/.test(w.word) && w.word.length <= 5; }), 2], [l3, 3], [l4, 4]]; // cat, frog, rain, star
     defs = defs.filter(function (d) { return d[0].length >= 2; });
     return defs.map(function (d, di) {
       var next = deck(d[0]);
       var near = []; defs.slice(Math.max(0, di - 1), di + 1).forEach(function (x) { near = near.concat(x[0]); }); // distractors from this rung and the one below
-      return { lvl: d[1], n: 3, need: 2, make: function () {
+      return { lvl: d[1], n: 1, need: 1, confirm: di > 0, make: function () { // 1 item; the main ladder re-checks a first miss once
         var t = next(), ds = pickDistractors(t, near.length >= 4 ? near : all, 2);
         return { speak: 'Which picture goes with this word?', prompt: 'Which picture is this word?', show: qWord(t.word),
           opts: RG.shuffle([t].concat(ds)).map(function (w) { return { emoji: w.emoji, correct: w === t, aria: 'picture' }; }) };
@@ -708,7 +709,7 @@
   function blendRungs() {
     return [1, 2, 3].map(function (lv) {
       var next = deck(BLEND_ITEMS[lv]);
-      return { lvl: lv, n: 3, need: 2, make: function () {
+      return { lvl: lv, n: 1, need: 1, make: function () {
         var it = next();
         return { speak: 'Which word goes with the picture?', prompt: 'Which word goes with the picture?', show: h('div', { class: 'big-emoji', text: it[1] }),
           opts: RG.shuffle(it[2]).map(function (w) { return { label: w, correct: w === it[0], say: w, cls: 'wordopt' }; }) };
@@ -740,9 +741,9 @@
     return parts.join(' | ');
   }
   function longRungs() {
-    return [1, 2, 3, 5].map(function (lv) {
+    return [1, 2, 3].map(function (lv) {
       var next = deck(LONG_ITEMS[lv]);
-      return { lvl: lv, n: 3, need: 2, make: function () {
+      return { lvl: lv, n: 1, need: 1, make: function () {
         var it = next(), word = it[0], good = it[1].split('|'), cuts = [], acc = 0;
         good.slice(0, -1).forEach(function (g) { acc += g.length; cuts.push(acc); });
         var wrongs = wrongCuts(word, cuts).slice(0, 2);
@@ -753,12 +754,12 @@
   }
   function sightRungs() {
     var C = RG.content || {}, sw = C.sightWords || {};
-    return [1, 2, 3, 4].map(function (lv) {
+    return [1, 2, 3].map(function (lv) {
       var list = arr(sw['level' + lv]).filter(function (w) { return w.length >= 3; });
       if (lv === 1) list = list.slice(Math.floor(list.length / 2)); // the primer half of level 1
       if (list.length < 4) list = ['they', 'what', 'want', 'with', 'said'];
       var next = deck(list);
-      return { lvl: lv, n: 3, need: 2, make: function () {
+      return { lvl: lv, n: 1, need: 1, make: function () {
         var t = next(), ds = RG.shuffle(list.filter(function (w) { return w !== t; })).slice(0, 2);
         return { speak: 'Find the word ' + t + '.', prompt: 'Find the word ' + t, show: null,
           opts: RG.shuffle([t].concat(ds)).map(function (w) { return { label: w, correct: w === t, say: w, cls: 'wordopt' }; }) };
@@ -767,12 +768,12 @@
   }
   function sentenceRungs() {
     var C = RG.content || {}, all = arr(C.sentences).filter(function (s) { return s.text && s.emoji && arr(s.distractors).length >= 2; });
-    return [1, 2, 3, 4].map(function (lv) {
+    return [1, 3].map(function (lv) { // one short sentence, then one two-sentence one
       var list = all.filter(function (s) { return s.level === lv; });
       if (list.length < 2) list = all.filter(function (s) { return Math.abs((s.level || 1) - lv) <= 1; });
       if (!list.length) return null;
       var next = deck(list);
-      return { lvl: lv, n: 3, need: 2, make: function () {
+      return { lvl: lv, n: 1, need: 1, make: function () {
         var s = next();
         return { speak: 'Read the sentence. Which picture matches?', prompt: 'Read it. Which picture matches?', show: h('div', { class: 'ci-sentence', text: s.text }),
           opts: RG.shuffle([{ emoji: s.emoji, correct: true }, { emoji: s.distractors[0], correct: false }, { emoji: s.distractors[1], correct: false }]) };
@@ -786,7 +787,7 @@
     var rest = L.filter(function (x) { return 'satpinmd'.indexOf(x.letter) < 0 && 'qx'.indexOf(x.letter) < 0; });
     function mk(pool, lower, lvl) {
       var next = deck(pool);
-      return { lvl: lvl, n: 2, need: 2, make: function () {
+      return { lvl: lvl, n: 1, need: 1, confirm: lvl > 1, make: function () {
         var t = next(), others = RG.shuffle(L.filter(function (x) { return x.letter !== t.letter; })).slice(0, 2);
         function lab(x) { return lower ? x.letter : x.letter.toUpperCase(); }
         return { speak: null, say: function () { return RG.speak('Find the letter').then(function () { return RG.sayLetter(t.letter); }); },
@@ -802,7 +803,7 @@
     var withPic = L.filter(function (x) { return x.emoji && x.word && x.word.charAt(0) === x.letter; });
     function mkSound(pool, lvl) {
       var next = deck(pool);
-      return { lvl: lvl, n: 2, need: 2, make: function () {
+      return { lvl: lvl, n: 1, need: 1, make: function () {
         var t = next(), others = RG.shuffle(L.filter(function (x) { return x.letter !== t.letter && x.sound !== t.sound; })).slice(0, 2);
         var q = 'Which letter says ' + t.sound + '?';
         return { speak: q, prompt: q, show: null, opts: RG.shuffle([t].concat(others)).map(function (x) { return { label: x.letter.toUpperCase(), correct: x === t, cls: 'letteropt', letter: x.letter }; }) };
@@ -810,14 +811,14 @@
     }
     function mkPic(pool, lvl) {
       var next = deck(pool);
-      return { lvl: lvl, n: 2, need: 2, make: function () {
+      return { lvl: lvl, n: 1, need: 1, make: function () {
         var t = next(), others = RG.shuffle(withPic.filter(function (x) { return x.letter !== t.letter && x.sound !== t.sound; })).slice(0, 2);
         var q = t.word + '. What sound does ' + t.word + ' start with?';
         return { speak: q, prompt: 'What sound does it start with?', show: h('div', { class: 'big-emoji', text: t.emoji }),
           opts: RG.shuffle([t].concat(others)).map(function (x) { return { label: x.letter, correct: x === t, cls: 'letteropt', letter: x.letter }; }) };
       } };
     }
-    return [mkSound(easy.length >= 3 ? easy : L, 1), mkSound(L, 2), mkPic(withPic.length >= 4 ? withPic : L, 3)];
+    return [mkSound(easy.length >= 3 ? easy : L, 1), mkPic(withPic.length >= 4 ? withPic : L, 3)]; // a letter sound, then a beginning sound
   }
   function rhymeRungs() {
     var fam = (RG.content || {}).rhymeFamilies || {}, keys = Object.keys(fam);
@@ -837,7 +838,7 @@
       } };
     }
     var easyF = fams.filter(function (f) { return f.length >= 3; });
-    return [mk(easyF.length ? easyF : fams, 3, 1), mk(fams, 3, 2), mk(fams, 4, 3)];
+    return [mk(easyF.length ? easyF : fams, 3, 1), mk(fams, 4, 3)];
   }
 
   function checkInPlan(track) {
@@ -857,9 +858,11 @@
     return plan.filter(function (l) { return l.rungs.length; });
   }
   // highest rung passed (2/2 style), then ONE RUNG LOWER so the first sessions feel easy
+  // (rungs may skip levels, so "one lower" is the passed rung's level minus one, never below the first rung)
   function levelFromLadder(rungs, passedIdx) {
-    if (passedIdx <= 0) return rungs[0] ? rungs[0].lvl : 1;
-    return rungs[passedIdx - 1].lvl;
+    if (!rungs[0]) return 1;
+    if (passedIdx <= 0) return rungs[0].lvl;
+    return Math.max(rungs[0].lvl, rungs[passedIdx].lvl - 1);
   }
   CI.levelFromLadder = levelFromLadder;
 
@@ -894,13 +897,24 @@
     var skipBtn = holdGate(h('button', { class: 'btn small ci-skip', type: 'button', 'aria-label': 'Grown-ups: hold for 3 seconds to skip the check-in' }, '⏭ Grown-ups: hold to skip'),
       skip, 'Grown-ups: hold the button for 3 seconds to skip');
 
+    var totalShells = 0;
+    plan.forEach(function (l) { totalShells += l.rungs.length; });
+    function shellsDone() { // a finished or skipped rung fills a shell, so a ladder that stops early jumps ahead
+      var n = 0;
+      plan.forEach(function (l, i) { if (i < li) n += l.rungs.length; else if (i === li) n += Math.min(ri, l.rungs.length); });
+      return n;
+    }
+    function shellRow() {
+      var d = shellsDone(), out = [];
+      for (var i = 0; i < totalShells; i++) out.push(h('span', { class: 'ci-shell' + (i < d ? ' full' : '') + (i === d - 1 ? ' new' : ''), text: '🐚' }));
+      return out;
+    }
     function frame(inner) {
-      var stop = Math.min(li + 1, plan.length);
       var s = h('div', { class: 'screen ci' },
         h('div', { class: 'ci-top' }, h('div', { class: 'pill' }, '🧭 Check-in'),
           press(h('button', { class: 'iconbtn ci-replay', type: 'button', 'aria-label': 'Say it again', text: '🔊' }), function () { if (RG._ciReplay) RG._ciReplay(); }),
-          h('div', { class: 'ci-stops', role: 'progressbar', 'aria-valuemax': plan.length, 'aria-valuenow': stop },
-            plan.map(function (l, i) { return h('span', { class: 'ci-stop' + (i < li ? ' done' : (i === li ? ' now' : '')), text: i < li ? '🏝️' : (i === li ? '⛵' : '·') }); }))),
+          h('div', { class: 'ci-shells', role: 'progressbar', 'aria-valuemax': totalShells, 'aria-valuenow': shellsDone() },
+            shellRow())),
         h('div', { class: 'ci-body' }, inner),
         h('div', { class: 'ci-foot' }, skipBtn));
       show(s);
@@ -911,7 +925,7 @@
       frame(h('div', { class: 'ci-card' },
         h('div', { class: 'ci-emoji', text: '🧭' }),
         h('h2', { text: "Captain's Check-in" }),
-        h('div', { class: 'ci-text', text: "Let's find the best islands for you! Tap what you think. There are no wrong answers." }),
+        h('div', { class: 'ci-text', text: "Just a few quick puzzles to find the best islands for you. Tap what you think. There are no wrong answers!" }),
         press(h('button', { class: 'btn primary', id: 'ci-start', type: 'button', text: "⛵ Let's go!" }), function () { RG.unlockAudio(); nextQuestion(true); })));
       RG.speak("Ahoy, " + prof.name + "! Let's find the best islands for you. There are no wrong answers!", { mood: 'happy' });
     }
@@ -952,10 +966,9 @@
 
     function afterAnswer() {
       var lad = plan[li], rung = lad.rungs[ri];
-      var done = false;
-      if (right >= rung.need) { passed[lad.id] = ri; ri++; startRung(); done = false; }
-      else if (miss > rung.n - rung.need || asked >= rung.n) { li++; ri = 0; startRung(); done = true; }
-      void done;
+      if (right >= rung.need) { passed[lad.id] = ri; ri++; startRung(); }
+      else if (rung.confirm && !lad.confirmed && asked < 2) { lad.confirmed = true; } // the deciding ladder re-checks one first miss with a fresh item
+      else { li++; ri = 0; startRung(); }
       nextQuestion();
     }
 

@@ -337,8 +337,10 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .growth { margin: 4px auto 6px; max-width: 520px; background: #fff7c2; border: 4px solid var(--sun); border-radius: 24px; padding: 8px 18px; font-weight: 800; font-size: 1.15rem; text-align: center; box-shadow: var(--shadow); }
 .screen.ci { animation: none; }
 .ci-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; flex-wrap: wrap; }
-.ci-stops { display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.85); border-radius: 30px; padding: 6px 16px; min-height: 48px; font-size: 1.5rem; font-weight: 800; box-shadow: 0 4px 0 rgba(10,60,110,.2); }
-.ci-stop.now { animation: bob 2.4s ease-in-out infinite; display: inline-block; }
+.ci-shells { display: flex; flex: 1 1 100%; flex-wrap: nowrap; justify-content: center; gap: 1px; align-items: center; background: rgba(255,255,255,.85); border-radius: 30px; padding: 6px 10px; min-height: 36px; box-shadow: 0 4px 0 rgba(10,60,110,.2); }
+.ci-shell { font-size: 1.2rem; line-height: 1; filter: grayscale(1); opacity: .4; transition: opacity .3s, filter .3s, transform .3s; }
+.ci-shell.full { filter: none; opacity: 1; }
+.ci-shell.new { animation: pop .35s ease-out; }
 .ci-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 8px 14px; }
 .ci-body > :first-child { margin-top: auto; } .ci-body > :last-child { margin-bottom: auto; }
 .ci-q { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 720px; text-align: center; }
@@ -359,6 +361,16 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .ci-skip { position: relative; min-height: 56px; font-size: 1rem; padding: 0 18px; opacity: .85; border-width: 3px; border-radius: 30px; }
 .ci-skip .hold-ring { inset: -5px; border-radius: 30px; }
 .ci-skip.holding .hold-ring { opacity: 1; }
+@media (max-height: 520px) { /* phone held sideways: one slim top row, smaller answers, everything visible */
+  .ci-top { flex-wrap: nowrap; padding: 6px 12px; } .ci-top .iconbtn { order: 3; flex: none; width: 52px; height: 52px; font-size: 1.5rem; }
+  .ci-shells { flex: 1 1 auto; min-height: 30px; padding: 2px 8px; order: 2; } .ci-shell { font-size: 1.05rem; }
+  .ci-body { padding: 2px 14px; } .ci-q { gap: 6px; } .ci-q .prompt { font-size: 1.15rem; padding: 4px 14px; }
+  .ci-oe { font-size: 2.3rem; } .ci-word { font-size: 2rem; padding: 0 16px; } .ci-sentence { font-size: 1.15rem; padding: 6px 12px; }
+  .ci-show .big-emoji { font-size: 2.6rem; } .ci-opt { min-height: 72px; } .ci-opt.letteropt { min-height: 72px; } .ci-opt.letteropt .ci-ol { font-size: 2.4rem; }
+  .ci-opt.wordopt { min-width: 110px; } .ci-opt.wordopt .ci-ol { font-size: 1.5rem; }
+  .ci-card { padding: 12px 20px; gap: 6px; } .ci-emoji { font-size: 3rem; } .ci-card h2 { font-size: 1.5rem; } .ci-text { font-size: 1.05rem; }
+  .ci-foot { padding: 2px 12px 6px; } .ci-skip { min-height: 38px; font-size: .85rem; }
+}
 @media (max-width: 480px) { .ci-oe { font-size: 3rem; } .ci-word { font-size: 2.4rem; } .ci-opt.letteropt { min-width: 92px; } }
 
 .gu-sub { font-weight: 800; margin: 14px 0 6px; font-size: 1.1rem; color: #0d6ebd; }
@@ -376,3 +388,8 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .gu-list { margin: 4px 0 8px; padding-left: 22px; font-weight: 700; }
 .gu-list li { margin: 3px 0; }
 .sheet.gu .close { width: 56px; height: 56px; font-size: 1.4rem; margin: -2px -4px 4px 8px; }
+@media (max-width: 480px) { /* grown-ups level table: fit the − 1/5 + stepper without sideways scrolling */
+  .gu th, .gu td { padding: 6px 3px; font-size: .9rem; }
+  .gu .lvl-btn { width: 38px; min-width: 38px !important; }
+  .gu .lvl-val { min-width: 40px; font-size: .9rem; }
+}

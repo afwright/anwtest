@@ -236,6 +236,14 @@ if (serial) (serial.chapters || []).forEach(function (ch, ci) {
   checkText(label + ' title', ch.title, ch.level, nm);
   ch.pages.forEach(function (p, i) { checkText(label + ' p' + (i + 1), p.text, ch.level, nm); words += tokens(p.text).length; });
   checkQuestions(label, ch.questions, ch.level, nm);
+  // "Your line" for the listen-along chapter book: one per page, 3-7 words, decodable at LEVEL 2
+  var kl = ch.kidLines || [];
+  if (kl.length !== ch.pages.length) problems.push(label + ': kidLines needs one line per page (' + kl.length + ' lines, ' + ch.pages.length + ' pages)');
+  kl.forEach(function (ln, i) {
+    var wc = tokens(ln).length;
+    if (wc < 3 || wc > 7) problems.push(label + ' kidLine ' + (i + 1) + ': needs 3-7 words, has ' + wc + ' ("' + ln + '")');
+    checkText(label + ' kidLine ' + (i + 1), ln, 2, nm);
+  });
   ch.words = words;
 });
 var pw = content.phonicsWords || {}, inventory = content.decodable && content.decodable.tilesByLevel;

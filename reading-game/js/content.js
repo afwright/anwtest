@@ -411,7 +411,7 @@
       Q('vocab', 'what does strong mean?', ['can lift a lot', 'is very tiny', 'is very slow'], 'can lift a lot'),
       Q('inference', 'what might happen next?', ['bolt will sail with the crew', 'bolt will go back to bed', 'the ship will sink'], 'bolt will sail with the crew')] });
   out.push({ id: 'cook-pat', title: 'Cook Pat and the Sea Monster', level: 5, names: ['pat'],
-    pages: [P('cook pat was a very bad cook. his stew was like old socks, and his pancakes were as hard as rocks.', '🍲'),
+    pages: [P('cook pat was a very bad cook. his stew was like old socks, and his pancakes were like rocks.', '🍲'),
       P('the crew did not say a thing. they just held their noses and ate.', '😷'),
       P('one day, a sea monster rose from the waves. it opened its huge mouth and gave a loud howl!', '🐙'),
       P('the monster sniffed the ship and licked its lips. the crew did not dare move.', '😱'),
@@ -448,9 +448,9 @@
         Q('sequence', 'what came right after tuck gave a bark?', ['a dark ship came fast', 'penny found the map', 'the sun went down'], 'a dark ship came fast'),
         Q('inference', 'what might the dark ship want?', ['the map', 'the hound', 'a fish'], 'the map')] },
     { title: 'The Chase', level: 4, names: NAMES,
-      pages: [P('"hold on!" said penny. she turned the wheel hard, and the sea star raced away.', '💨'),
+      pages: [P('"hold on!" said penny. she spun the wheel, and the sea star raced away.', '💨'),
         P('the dark ship came after them. it was big and fast. its captain, grim, had a long, black coat.', '🧥'),
-        P('clouds rolled in. the wind blew hard and the waves grew tall.', '🌊'),
+        P('clouds rolled in. the wind blew fast and the waves grew tall.', '🌊'),
         P('"we can not get away!" shouted finn. "we can hide in the storm," said penny.', '⛈️'),
         P('she turned the ship into the dark storm. a loud boom shook the ship. rain hit the deck.', '🌧️'),
         P('then a thick fog came down. penny could not see her own hand.', '🌫️'),
@@ -502,6 +502,16 @@
         Q('vocab', 'what does scrambled mean?', ['climbed fast', 'sat still', 'went to bed'], 'climbed fast'),
         Q('inference', 'what might happen next?', ['a new ship will meet them', 'they will go to sleep', 'the sea will go away'], 'a new ship will meet them')] }
   ] };
+  // "Your line": one short sentence per page (3-7 words, decodable at level 2) that he reads aloud himself
+  // in the listen-along mode of the chapter book. Same order and count as the chapter's pages.
+  var KIDLINES = [
+    ['penny has a big ship.', 'tuck is a big dog.', 'a box! penny gets it.', 'it is a map!', 'dig at the rock.', 'penny and finn grin.', 'a black ship is fast!', 'the ship got hit!'],
+    ['go fast, penny!', 'grim is on the ship.', 'the wind is up.', 'we can hide!', 'a big drop fell.', 'fog! i can not see.', 'an island is here!', 'big prints in the sand!'],
+    ['the gulls yell.', 'a gate is in the cave.', 'we can not get in.', 'drip, drip, drip.', 'finn can think.', 'it is a clock!', 'click! it is up!', 'a dim hole, down, down.', 'grim is in the cave!'],
+    ['grim has a chest!', 'thank you, penny.', 'the sand can sink!', 'help, help, help!', 'tuck gets the rope.', 'penny and finn get out.', 'the lid pops up.', 'it has a ring and a note.', 'the cave shakes!'],
+    ['run, penny, run!', 'grim is stuck.', 'penny can help.', 'tuck and finn tug.', 'the cave went down.', 'penny gets the note.', 'grim is sad.', 'a ship came in!']
+  ];
+  window.RG.content.serial.chapters.forEach(function (ch, i) { ch.kidLines = KIDLINES[i]; });
 })();
 
 // ---- extra emoji for picturable words in the stories (each shows exactly that thing) ----

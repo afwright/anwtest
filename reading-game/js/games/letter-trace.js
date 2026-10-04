@@ -13,7 +13,12 @@
     '@keyframes lt-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}',
     '.lt-canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}',
     '.lt-row{display:flex;gap:12px;align-items:center;justify-content:center}',
-    '.lt-wrap .btn.lt-clear{min-height:64px;min-width:140px;font-size:1.5rem;touch-action:manipulation}'
+    '.lt-wrap .btn.lt-clear{min-height:64px;min-width:140px;font-size:1.5rem;touch-action:manipulation}',
+    /* short landscape screens: board on the left, prompt and Clear on the right */
+    '.lt-wrap.lt-side{display:grid;grid-template-columns:auto minmax(0,240px);grid-template-rows:1fr 1fr;align-content:center;justify-content:center;column-gap:20px;row-gap:10px}',
+    '.lt-wrap.lt-side .lt-board{grid-column:1;grid-row:1 / span 2;align-self:center}',
+    '.lt-wrap.lt-side .prompt{grid-column:2;grid-row:1;align-self:end}',
+    '.lt-wrap.lt-side .lt-row{grid-column:2;grid-row:2;align-self:start}'
   ].join('\n');
 
   var FALLBACK_SOUND = { a: 'ah', b: 'buh', c: 'kuh', d: 'duh', e: 'eh', f: 'fff', g: 'guh', h: 'huh', i: 'ih', j: 'juh', k: 'kuh', l: 'lll', m: 'mmm', n: 'nnn', o: 'aw', p: 'puh', q: 'kwuh', r: 'rrr', s: 'sss', t: 'tuh', u: 'uh', v: 'vvv', w: 'wuh', x: 'ks', y: 'yuh', z: 'zzz' };
@@ -197,10 +202,24 @@
       }
 
       function layout() {
-        var w = container.clientWidth || window.innerWidth;
-        var h = container.clientHeight || window.innerHeight * 0.7;
-        var s = Math.min(w - 40, h - 150, 460);
-        s = Math.max(200, Math.floor(s));
+        // measure the space the board really has: stage padding, wrap padding, gaps,
+        // the board's own border, the prompt (which may wrap) and the Clear row
+        var cs = window.getComputedStyle(container);
+        var padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        var padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+        var w = (container.clientWidth || window.innerWidth) - padX;
+        var h = (container.clientHeight || window.innerHeight * 0.7) - padY;
+        var side = w > h * 1.25 && h < 560;
+        wrap.classList.toggle('lt-side', side);
+        var chrome = 12 + 8 + 2; // board border (6px x 2) + drop shadow + rounding slack
+        var avail;
+        if (side) {
+          avail = Math.min(w - 24 - 20 - Math.max(prompt.offsetWidth, row.offsetWidth, 160), h - 18);
+        } else {
+          avail = Math.min(w - 24, h - 18 - 20 - prompt.offsetHeight - row.offsetHeight);
+        }
+        var s = Math.min(avail - chrome, 460);
+        s = Math.max(120, Math.floor(s));
         size = s;
         dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
         canvas.width = Math.round(size * dpr);

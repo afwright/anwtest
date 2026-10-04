@@ -8,7 +8,7 @@
   var NEXT_WAIT_MS = 3000;
   var BASE_RATE = 0.85;
   var CSS = [
-    '.sc-stage{gap:12px;justify-content:flex-start;padding:8px 10px 16px;width:100%;box-sizing:border-box;}',
+    '.sc-stage{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:flex-start;padding:8px 10px 16px;width:100%;box-sizing:border-box;}',
     '.sc-title{font-size:1.3rem;font-weight:700;color:#1d2b4f;text-align:center;}',
     '.sc-pg{font-size:1rem;color:#4a5a80;}',
     '.sc-page{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:640px;animation:sc-in .45s ease;}',

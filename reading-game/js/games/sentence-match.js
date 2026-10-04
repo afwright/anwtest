@@ -7,7 +7,7 @@
   var STYLE_ID = 'sm-styles';
   var WAIT_MS = 5000;
   var CSS = [
-    '.sm-stage{gap:14px;justify-content:flex-start;padding:8px 10px 16px;width:100%;box-sizing:border-box;}',
+    '.sm-stage{display:flex;flex-direction:column;align-items:center;gap:14px;justify-content:flex-start;padding:8px 10px 16px;width:100%;box-sizing:border-box;}',
     '.sm-card{background:#fff;border:4px solid #4aa3ff;border-radius:24px;padding:16px 14px;max-width:640px;width:100%;',
     ' box-sizing:border-box;text-align:center;display:flex;flex-direction:column;gap:8px;}',
     '.sm-line{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 10px;}',

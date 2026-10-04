@@ -7,7 +7,7 @@
   var STYLE_ID = 'sf-styles';
   var FISH_W = 150, FISH_H = 66, LANE = 72;
   var CSS = [
-    '.sf-stage{gap:8px;justify-content:flex-start;padding:6px 8px 12px;width:100%;box-sizing:border-box;}',
+    '.sf-stage{display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:flex-start;padding:6px 8px 12px;width:100%;box-sizing:border-box;}',
     '.sf-bar{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}',
     '.sf-bucket{display:flex;align-items:center;gap:8px;font-size:2.2rem;background:#fff;border:4px solid #f4a62a;',
     ' border-radius:20px;padding:4px 16px;min-height:60px;box-sizing:border-box;}',

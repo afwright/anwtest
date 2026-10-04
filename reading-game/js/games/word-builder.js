@@ -6,7 +6,7 @@
 
   var STYLE_ID = 'wb-styles';
   var CSS = [
-    '.wb-stage{gap:12px;justify-content:flex-start;padding:8px 8px 16px;overflow:visible;}',
+    '.wb-stage{display:flex;flex-direction:column;align-items:center;gap:12px;justify-content:flex-start;padding:8px 8px 16px;overflow:visible;width:100%;box-sizing:border-box;}',
     '.wb-pic{cursor:pointer;line-height:1;user-select:none;-webkit-user-select:none;}',
     '.wb-slots{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:6px 0 10px;}',
     '.wb-slot{width:76px;height:88px;min-width:0;display:flex;align-items:center;justify-content:center;',

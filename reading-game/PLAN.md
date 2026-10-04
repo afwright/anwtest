@@ -345,7 +345,7 @@ The parent reports Big Captain struggles with **(a) consonant combinations** and
 The typical error is **dropping a consonant from a blend** (frog → "fog", stop → "top", lamp → "lap"). The game drills exactly that.
 - **Mode A, Hear it:** an emoji picture is spoken ("frog"). Elkonin sound boxes appear (one box per sound), and he taps a box for each sound he hears (f-r-o-g = 4 boxes). This is the phonemic awareness that underpins blends.
 - **Mode B, Read it (main mode):** a picture plus 3 word choices that are minimal pairs differing by the blend consonant (frog / fog / fig; lamp / lap / lamb). Fire the cannon at the right word.
-- **Mode C, Build it:** a rime target (-op) and cannonballs with blends (st, fl, dr, cr, ch). Fire the blend that makes the picture word (stop 🛑, drop 💧, crop?); avoid non-picturable targets.
+- **Mode C, Build it:** a rime target (-op) and cannonballs with blends (st, fl, dr, cr, ch). Fire the blend that makes the picture word (stop 🛑, drop 💧); use only picturable targets.
 - Level progression: L1 initial l-blends and s-blends (fl, sl, pl, st, sp, sn, sw); L2 r-blends (fr, tr, dr, cr, gr, br); L3 final blends (-nd, -nt, -mp, -st, -sk, -ft, -lk) plus digraph review (sh, ch, th, ck, -ng, -nk); L4 3-letter clusters (str, spl, spr, scr, squ, thr, shr) and -tch; L5 blends at both ends (stamp, frost, crust, splint).
 - Blend letters render as linked tiles (two letters, one tile, a shared underline) with a consistent color, but each letter's sound is still spoken separately, then together ("f… r… fr!"). A blend is two sounds, unlike a digraph, and the UI must teach that difference: digraph tiles are a single solid color, while blend tiles are two-tone.
 - Record the error type: if he picks the dropped-consonant distractor, call `RG.progress.recordError('blends','dropped-consonant', word)`.
@@ -359,7 +359,7 @@ Teach a repeatable long-word strategy: **find the vowels → saw between syllabl
   - L2: closed syllables VC/CV (napkin, rabbit, magnet, picnic, kitten, muffin, basket, insect).
   - L3: consonant-le (turtle, candle, apple, puzzle, bubble, pickle) and open syllables (robot, tiger, paper, music, zero).
   - L4: suffixes and prefixes as chunks (jumping, helpful, unlock, rewind, sadness, quickly, kindness).
-  - L5: 3-syllable words (fantastic, octopus, astronaut, Wisconsin✗ (no proper nouns), basketball, butterfly, hamburger, computer).
+  - L5: 3-syllable words (fantastic, octopus, astronaut, basketball, butterfly, hamburger, computer).
 - Teach the syllable "rules" as kid language on a "Saw Tips" card: "Two consonants in the middle? Cut between them!" (rab|bit); "-le grabs the letter before it" (tur|tle).
 - Record the error type `RG.progress.recordError('long-words', 'skipped-chunk' | 'wrong-split', word)`.
 

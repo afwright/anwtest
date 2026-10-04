@@ -337,3 +337,36 @@ Design for a struggling reader: content he can decode, but with interests matche
 **Growth, not grades.**
 - Kid-facing celebration compares him only to himself: "You learned 6 new words this week!" and "You read 3 stories!"
 - Grown-ups panel: a weekly summary of words mastered, Tricky Words, time played and estimated level per skill, with a plain-language "what to practice at home" note.
+
+## v4.2 AMENDMENT: Target his two specific weak spots (BINDING)
+The parent reports Big Captain struggles with **(a) consonant combinations** and **(b) long words**.
+
+### New island: blend-cannon 💣 (`js/games/blend-cannon.js`, skill `blends`, track big, levels 1–5)
+The typical error is **dropping a consonant from a blend** (frog → "fog", stop → "top", lamp → "lap"). The game drills exactly that.
+- **Mode A, Hear it:** an emoji picture is spoken ("frog"). Elkonin sound boxes appear (one box per sound), and he taps a box for each sound he hears (f-r-o-g = 4 boxes). This is the phonemic awareness that underpins blends.
+- **Mode B, Read it (main mode):** a picture plus 3 word choices that are minimal pairs differing by the blend consonant (frog / fog / fig; lamp / lap / lamb). Fire the cannon at the right word.
+- **Mode C, Build it:** a rime target (-op) and cannonballs with blends (st, fl, dr, cr, ch). Fire the blend that makes the picture word (stop 🛑, drop 💧, crop?); avoid non-picturable targets.
+- Level progression: L1 initial l-blends and s-blends (fl, sl, pl, st, sp, sn, sw); L2 r-blends (fr, tr, dr, cr, gr, br); L3 final blends (-nd, -nt, -mp, -st, -sk, -ft, -lk) plus digraph review (sh, ch, th, ck, -ng, -nk); L4 3-letter clusters (str, spl, spr, scr, squ, thr, shr) and -tch; L5 blends at both ends (stamp, frost, crust, splint).
+- Blend letters render as linked tiles (two letters, one tile, a shared underline) with a consistent color, but each letter's sound is still spoken separately, then together ("f… r… fr!"). A blend is two sounds, unlike a digraph, and the UI must teach that difference: digraph tiles are a single solid color, while blend tiles are two-tone.
+- Record the error type: if he picks the dropped-consonant distractor, call `RG.progress.recordError('blends','dropped-consonant', word)`.
+
+### New island: syllable-saw 🪚 (`js/games/syllable-saw.js`, skill `long-words`, track big, levels 1–5)
+Teach a repeatable long-word strategy: **find the vowels → saw between syllables → read each chunk → blend the chunks**.
+- A long word sits on a wooden log. Vowels glow when he taps "🔍 find the vowels". He taps a gap between letters to saw the log. Accept any valid split; a wrong cut is gently undone with a hint about the rule. The saw animation splits the log into chunks.
+- Each chunk is tappable and spoken. Then he blends: the chunks slide together and he picks the matching picture or meaning (3 choices).
+- Level progression (each word only uses patterns he's had):
+  - L1: compound words (sunset, starfish, cupcake, sandbox, catfish, hotdog, backpack, sailboat).
+  - L2: closed syllables VC/CV (napkin, rabbit, magnet, picnic, kitten, muffin, basket, insect).
+  - L3: consonant-le (turtle, candle, apple, puzzle, bubble, pickle) and open syllables (robot, tiger, paper, music, zero).
+  - L4: suffixes and prefixes as chunks (jumping, helpful, unlock, rewind, sadness, quickly, kindness).
+  - L5: 3-syllable words (fantastic, octopus, astronaut, Wisconsin✗ (no proper nouns), basketball, butterfly, hamburger, computer).
+- Teach the syllable "rules" as kid language on a "Saw Tips" card: "Two consonants in the middle? Cut between them!" (rab|bit); "-le grabs the letter before it" (tur|tle).
+- Record the error type `RG.progress.recordError('long-words', 'skipped-chunk' | 'wrong-split', word)`.
+
+### Wiring
+- Register both new islands for the big track (order: rhyme-boat, word-builder, blend-cannon, syllable-saw, sight-fishing, sentence-match, story-cove, reading-quest, captains-quiz). Both count toward unlocking the Challenge Island.
+- Placement ladder rungs include a blend minimal-pair item (frog/fog) and a two-syllable item (napkin), each setting their skill's starting level (then one rung lower per v4.1).
+- Captain's Challenge (big) includes at least 2 blend questions and 2 long-word questions per run.
+- Tricky Words (v4.1) includes words missed in both new games.
+- Grown-ups panel, "Patterns we noticed": counts of recorded error types in plain language. For example, "Often drops the second letter in blends (frog → fog): 7 times this week. Practice: say the word slowly and tap a finger for each sound." This gives the parent and teacher something concrete.
+- `RG.progress.recordError(skill, type, word)` and `.errors()` are persisted per profile and implemented in core.js.

@@ -178,3 +178,58 @@ RG.content = {
 ## Definition of done
 - Opening `reading-game/index.html` in Chromium shows no console errors; every game can be launched, played to completion (5 rounds), and returns to the map.
 - Works at 390×844 (phone) and 1024×768 (iPad) with no horizontal scroll.
+
+---
+
+# ADDENDUM v2 — "Why Reading Matters", Quizzes, and Points (BINDING, supersedes above where it conflicts)
+
+## North star
+The game must teach **why** reading is important, not just **how** to read. Every child should repeatedly
+feel: *"Because I could read that, I got something / helped someone / stayed safe / had fun."*
+Reading is the key that unlocks the island. Points reward what reading *achieves*, not reading itself
+(avoids the overjustification trap where kids read only for points).
+
+## Points: Gold Coins 🪙 (core.js / app.js — CORE agent)
+```js
+RG.coins.balance() -> number          // per profile, persisted
+RG.coins.add(n, reason?)              // animates a coin burst + counter tick-up in the header
+RG.coins.spend(n) -> boolean          // false if insufficient
+RG.rank() -> {name, emoji, next, coinsToNext}   // by lifetime coins earned:
+   // 0 Deckhand 🧽, 50 Sailor ⚓, 150 First Mate 🧭, 350 Captain 🏴‍☠️, 700 Admiral 👑
+```
+- `ctx.answer(correct)` automatically awards coins: **3 for a first-try correct, 1 for a later correct, 0 for wrong (never subtract)**.
+- Finishing a voyage (`ctx.finish()`) awards a +5 coin bonus on the treasure screen (stars still awarded as before).
+- New optional def field `rounds` (number). If set, `ctx.rounds = def.rounds`, otherwise 5. The header round tracker must render `ctx.rounds` dots.
+- New `ctx.award(n, reason)` = `RG.coins.add` for game-specific bonuses (e.g. a quiz perfect-score bonus).
+- **Harbor Shop** 🏪 (on map): spend coins on boat colors, sails, flags, pets (a parrot or cat on deck) and hats for the avatar. Bought items show on the map boat. Around 12 items, priced 20–200.
+- **Rank badge** on the map + rank-up celebration ("You're now a First Mate!").
+- Grown-ups panel: show lifetime coins, quiz history (date, score/total, per-skill breakdown).
+
+## Quizzes & tests (new game file — QUEST agent)
+**captains-quiz** 🏆 (`js/games/captains-quiz.js`, skill `quiz`, tracks little+big, `rounds: 10`):
+- A mixed 10-question test drawing on every skill for the profile's track, generated from RG.content.
+  - little: letter ID, letter sound, beginning sound, rhyme, "which sign says STOP?" (picture-supported).
+  - big: decode a word → pick the picture, sight word, missing word in a sentence, rhyme, a short-passage comprehension question, a real-world reading question.
+- One attempt per question (it's a test): `ctx.answer(correct)` once, then reveal the right answer kindly, then `ctx.roundDone()`.
+- End screen *inside the stage* before `ctx.finish()`: score X/10, a trophy tier (🥉 6+, 🥈 8+, 🥇 10), bonus `ctx.award` (10 for 🥇, 5 for 🥈, 2 for 🥉), and "Skills to practice" (which islands to revisit, mapped from missed question types). Persist the result via `RG.quizLog.add({date, track, score, total, bySkill:{skill:[right,total]}})` (CORE implements RG.quizLog.add/list, persisted per profile).
+- Framing is always low-stakes: "Captain's Challenge", never "test" or "grade" in kid-facing text.
+
+## "Why Read?" missions (new game file — QUEST agent)
+**reading-quest** 🗺️ (`js/games/reading-quest.js`, skill `real-world`, tracks little+big, rounds 5):
+Story-driven scenes where reading is *necessary* to succeed, and the consequence of reading (or not) is shown playfully.
+Each scene: a short narrator setup, a piece of real-world text, a choice; the payoff explicitly names why reading helped
+("You read the sign, so you found the treasure! Readers find things other people miss.").
+Scene types (≥ 15 scenes total, tagged by track/level):
+- **Signposts:** a fork in the path with two signs ("treasure →", "← crabs"). Read correctly → treasure; wrong → silly crab pinch, then try again.
+- **Safety labels:** two bottles on a ship shelf, "juice" vs "soap", or a door marked "hot", "stop", "danger". Reading keeps you safe.
+- **Recipe:** the ship's cook needs help making pancakes; read the recipe card and pick the ingredients in order (cooking).
+- **Message in a bottle:** a friend's note ("meet me at the big tree") → go to the right place on a mini-map.
+- **Shopping list / market:** read a list and buy the right items at the harbor market.
+- **Treasure map directions:** "go past the rock, then dig by the palm" → tap in order.
+- **Menu / tickets / names:** read the name on a parcel to deliver it to the right animal.
+- little track: 1–2 word signs with picture support, read aloud on tap; the "why" is said by the narrator. big track: phrases and short sentences.
+- After each scene, a one-line "Reading Superpower" card (e.g. "🦸 Readers stay safe!", "🦸 Readers can cook!", "🦸 Readers get secret messages!"). The superpowers collected are shown at the end of the voyage.
+
+## Map changes (CORE)
+- Islands order: reading-quest and captains-quiz appear on both tracks. captains-quiz is drawn as a special "Challenge Island" at the end of the path.
+- A "Why Read?" scroll on the map that lists the Reading Superpowers the child has unlocked (`RG.superpowers.add(id, label, emoji)` / `.list()`, persisted per profile, implemented by CORE, used by reading-quest).

@@ -527,7 +527,7 @@
           if (bySkill[sk][0] < bySkill[sk][1]) {
             (SKILL_ISLANDS[sk] || []).forEach(function (id) {
               if (!seenI[id] && onTrack(id)) { seenI[id] = { info: islandInfo(id), skills: [] }; practice.push(seenI[id]); }
-              seenI[id].skills.push(SKILL_NAMES[sk] || sk);
+              if (seenI[id]) { seenI[id].skills.push(SKILL_NAMES[sk] || sk); }
             });
           }
         });

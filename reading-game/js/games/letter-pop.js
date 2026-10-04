@@ -50,7 +50,7 @@
     blurb: 'Pop the balloon with the letter you hear!',
     mount: function (container, ctx) {
       injectStyle();
-      var alive = true, locked = true, misses = 0, round = 0, sp = 0;
+      var sawPtr = false, alive = true, locked = true, misses = 0, round = 0, sp = 0;
       var last = null, used = [], target = null;
       var timers = [];
       var level = Math.max(1, Math.min(3, ctx.level || 1));
@@ -123,12 +123,13 @@
           var fl = RG.el('div', { class: 'lp-float' }, b);
           fl.style.animationDelay = (i * 0.1) + 's,' + (0.7 + i * 0.35) + 's';
           b.addEventListener('pointerdown', function (e) {
+            sawPtr = true;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
             e.preventDefault();
             onTap(b, l);
           });
           // keyboard / assistive click (pointerdown already handled for pointer users)
-          b.addEventListener('click', function (e) { if (e.detail === 0) onTap(b, l); });
+          b.addEventListener('click', function () { if (sawPtr) { sawPtr = false; return; } onTap(b, l); });
           field.appendChild(fl);
         });
         container.dataset.target = target;

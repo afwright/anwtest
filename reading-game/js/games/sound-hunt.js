@@ -74,7 +74,7 @@
     blurb: 'What sound does the picture start with?',
     mount: function (container, ctx) {
       injectStyle();
-      var alive = true, locked = true, misses = 0, round = 0, sp = 0;
+      var sawPtr = false, alive = true, locked = true, misses = 0, round = 0, sp = 0;
       var lastLetter = null, usedLetters = [], target = null;
       var timers = [];
       var level = Math.max(1, Math.min(3, ctx.level || 1));
@@ -162,11 +162,12 @@
           var b = RG.el('button', { class: 'choice sh-card', type: 'button', 'data-letter': l, 'aria-label': 'letter ' + l });
           b.appendChild(document.createTextNode(l.toUpperCase() + l));
           b.addEventListener('pointerdown', function (e) {
+            sawPtr = true;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
             e.preventDefault();
             onTap(b, l);
           });
-          b.addEventListener('click', function (e) { if (e.detail === 0) onTap(b, l); });
+          b.addEventListener('click', function () { if (sawPtr) { sawPtr = false; return; } onTap(b, l); });
           choices.appendChild(b);
         });
         container.dataset.target = target.letter;

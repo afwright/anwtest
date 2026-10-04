@@ -195,7 +195,7 @@
           if (el.parentNode) { el.parentNode.removeChild(el); }
           var k = fishes.indexOf(f);
           if (k >= 0) { fishes.splice(k, 1); }
-          if (!locked || true) { spawn(f.lane, pickDistractor(), false, false); }
+          spawn(f.lane, pickDistractor(), false, false);
         }, 1000);
       }
 

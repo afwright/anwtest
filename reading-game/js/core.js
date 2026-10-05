@@ -148,6 +148,7 @@
     if (typeof b.secs !== 'number') b.secs = 0;
     if (typeof b.stories !== 'number') b.stories = 0;
     if (typeof b.voyages !== 'number') b.voyages = 0;
+    if (typeof b.books !== 'number') b.books = 0;
     if (!Array.isArray(b.learned)) b.learned = [];
     var keys = Object.keys(d.daily);
     if (keys.length > 60) keys.sort().slice(0, keys.length - 60).forEach(function (x) { delete d.daily[x]; });
@@ -219,11 +220,11 @@
     /* per-day buckets feed the kid-facing growth line and the grown-ups weekly summary */
     addPlayTime: function (secs) { if (secs > 0) { var b = dayBucket(cur()); b.secs += Math.round(secs); save(); } },
     weekly: function (profileId) {
-      var d = pdata(profileId || RG.profile().id), out = { learned: 0, mastered: 0, stories: 0, voyages: 0, secs: 0, words: [] };
+      var d = pdata(profileId || RG.profile().id), out = { learned: 0, mastered: 0, stories: 0, voyages: 0, books: 0, secs: 0, words: [] };
       var seen = {}, i;
       for (i = 0; i < 7; i++) {
         var b = d.daily[dayKey(i)]; if (!b) continue;
-        out.secs += b.secs || 0; out.stories += b.stories || 0; out.voyages += b.voyages || 0;
+        out.secs += b.secs || 0; out.stories += b.stories || 0; out.voyages += b.voyages || 0; out.books += b.books || 0;
         (b.learned || []).forEach(function (w) { if (!seen[w]) { seen[w] = 1; out.words.push(w); } });
       }
       out.learned = out.words.length;
@@ -278,6 +279,13 @@
       var bk = dayBucket(d); bk.voyages++; if (gameId === 'story-cove') bk.stories++;
       var i = d.recommended.indexOf(gameId); if (i >= 0) d.recommended.splice(i, 1);
       save();
+    },
+    /* a grown-up's real-book reward waits here until the child next opens the map -> {n, from} (from = rank index before) or null */
+    takeBookReward: function (profileId) {
+      var d = pdata(profileId || RG.profile().id), b = d.kv.bookPending;
+      if (!b || !(b.n > 0)) return null;
+      delete d.kv.bookPending; save();
+      return { n: b.n, from: typeof b.from === 'number' ? b.from : rankIndex(d.lifetime) };
     },
     completed: function (gameId, profileId) { return pdata(profileId || RG.profile().id).completed[gameId] || 0; },
     setRecommended: function (ids) {
@@ -359,10 +367,18 @@
   RG.coins = {
     balance: function () { return cur().coins; },
     lifetime: function () { return cur().lifetime; },
-    add: function (n, reason) {
+    add: function (n, reason, profileId) {
       n = Math.round(n); if (!(n > 0)) return;
-      var d = cur(), before = rankIndex(d.lifetime);
-      d.coins += n; d.lifetime += n; save();
+      var d = profileId ? pdata(profileId) : cur(), before = rankIndex(d.lifetime);
+      d.coins += n; d.lifetime += n;
+      if (reason === 'book') { // a grown-up's real-book reward: counts like any coins, but the child sees it (and any rank-up) when the map next opens
+        var bk = dayBucket(d); bk.books++;
+        var pend = d.kv.bookPending || { n: 0, from: before };
+        d.kv.bookPending = { n: pend.n + n, from: pend.from };
+        save(); try { RG.sfx.coin(); } catch (e) { /* ignore */ }
+        updateCounters(); return;
+      }
+      save();
       try { RG.sfx.coin(); } catch (e) { /* ignore */ }
       coinBurst(n);
       // tick counter after fly-in

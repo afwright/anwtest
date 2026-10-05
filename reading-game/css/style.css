@@ -224,7 +224,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .fs-toggle svg { display: block; }
 .btn.fs-toggle { gap: 8px; }
 .iconbtn.fs-toggle.on, .btn.fs-toggle.on { background: #d6f5dd; }
-@media (max-width: 480px) { .toolbar .btn.fs-toggle .fs-lbl { display: none; } .toolbar .btn.fs-toggle { min-width: 56px; } }
+@media (max-width: 480px) { .toolbar .btn.fs-toggle .fs-lbl { display: none; } .toolbar .btn.fs-toggle { min-width: 64px; } }
 
 /* ---------- game host ---------- */
 .host-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; padding: 8px 12px 4px; }
@@ -288,7 +288,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-weight: 800; font-size: 1rem;
 }
 .shop-item .pv { font-size: 2.8rem; line-height: 1.1; min-height: 52px; display: flex; align-items: center; }
-.shop-item .sw { width: 52px; height: 40px; border-radius: 10px; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.shop-item .swatch { width: 52px; height: 40px; border-radius: 10px; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
 .shop-item.equipped { border-color: var(--green); background: #e5ffe9; }
 .shop-item.cant { opacity: .65; }
 
@@ -306,7 +306,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .seg button.sel { background: var(--green); color: #fff; border-color: var(--green-dark); }
 .gu table { border-collapse: collapse; width: 100%; font-size: 1rem; }
 .gu th, .gu td { text-align: left; padding: 6px 8px; border-bottom: 2px solid #e4f3fb; }
-.gu .danger { background: #ffe1e1; border-color: #ffb3b3; }
+.gu .danger { background: #ffe1e1; border-color: #ffb3b3; margin-top: 14px; }
 .gu-hold-wrap { text-align: center; }
 .gu-help { font-size: .95rem; opacity: .75; font-weight: 700; flex: 1 1 200px; }
 .switch { width: 76px; height: 44px; border-radius: 24px; border: 3px solid #9fb2c2; background: #cfd9e2; position: relative; padding: 0; flex: none; transition: background .2s, border-color .2s; }
@@ -388,7 +388,13 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .pattern .tip { margin-top: 4px; font-weight: 700; color: #0d6ebd; }
 .gu-list { margin: 4px 0 8px; padding-left: 22px; font-weight: 700; }
 .gu-list li { margin: 3px 0; }
-.sheet.gu .close { width: 56px; height: 56px; font-size: 1.4rem; margin: -2px -4px 4px 8px; }
+.sheet.gu .btn.round.close { position: static; float: none; flex: 0 0 auto; width: 64px; height: 64px; font-size: 1.4rem; margin: 0; }
+.gu-head { position: sticky; top: -18px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff; margin: -18px -20px 8px; padding: 12px 20px 14px; border-radius: 32px 32px 0 0; border-bottom: 3px solid #e4f3fb; }
+.gu-head h2 { margin: 0; }
+.gu-book { margin: 10px 0; }
+.gu .book-reward { min-height: 64px; font-size: 1.15rem; padding: 0 18px; background: #fff3c4; border-color: #ffd35c; }
+.rankup-text .inline-coin { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -.25em; }
+.rankup-text .inline-coin img, .rankup-text .inline-coin svg { width: 100%; height: 100%; }
 @media (max-width: 480px) { /* grown-ups level table: fit the − 1/5 + stepper without sideways scrolling */
   .gu th, .gu td { padding: 6px 3px; font-size: .9rem; }
   .gu .lvl-btn { width: 38px; min-width: 38px !important; }
@@ -506,7 +512,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .shop-tabs { display: flex; gap: 6px; margin: 4px 0 10px; }
 .shop-tab { flex: 1 1 0; min-height: 64px; padding: 4px; border-radius: 20px; border: 4px solid #bfe9ff; background: #fff; font-size: 1.05rem; font-weight: 800; }
 .shop-tab.sel { background: var(--green); color: #fff; border-color: var(--green-dark); }
-@media (max-width: 480px) { .shop-tab { font-size: .85rem; } }
+@media (max-width: 480px) { .shop-tab { font-size: .95rem; } }
 .shop-card { background: #f4fbff; border: 4px solid #bfe9ff; border-radius: 24px; padding: 8px 6px 10px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; font-weight: 800; text-align: center; position: relative; }
 .shop-card .pv { height: 92px; width: 100%; display: flex; align-items: center; justify-content: center; }
 .shop-card .art { width: 92px; height: 92px; display: flex; align-items: center; justify-content: center; }
@@ -514,7 +520,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .shop-card .art.ship-art { width: 110px; height: 92px; }
 .shop-card .art.ship-art svg, .shop-card .art.ship-art img { overflow: visible; }
 .shop-card .art.emoji { font-size: 2.8rem; line-height: 1.1; }
-.shop-card .sw { width: 52px; height: 40px; border-radius: 10px; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.shop-card .swatch { width: 52px; height: 40px; border-radius: 10px; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
 .shop-card .nm { font-size: 1rem; line-height: 1.1; }
 .shop-card .sub { font-size: .85rem; opacity: .8; }
 .shop-card.equipped { border-color: var(--green); background: #e5ffe9; }
@@ -526,7 +532,7 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .lk-badge { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; }
 .lk-badge svg, .lk-badge img { width: 100%; height: 100%; display: block; }
 .lk-badge.emoji { font-size: 1.5rem; }
-.shop-card .btn.small { min-height: 60px; font-size: 1.05rem; padding: 0 14px; border-width: 4px; }
+.shop-card .btn.small { min-height: 64px; font-size: 1.05rem; padding: 0 14px; border-width: 4px; }
 .shop-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .shop-sheet { width: min(760px, 100%); }
 
@@ -587,16 +593,17 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 @keyframes fxFlag { 0%, 100% { transform: rotate(-12deg) scale(1); opacity: 1; } 50% { transform: rotate(12deg) scale(1.5); } }
 @keyframes fxBeam { 0% { transform: scale(.3); opacity: 0; filter: drop-shadow(0 0 0 #ffe27a); } 40% { transform: scale(1.8); opacity: 1; filter: drop-shadow(0 0 24px #ffe27a); } 100% { transform: scale(2.6); opacity: 0; } }
 @keyframes fxToot { 0% { transform: scale(.4); opacity: 0; } 30% { transform: scale(1.4); opacity: 1; } 100% { transform: translateY(-40px) scale(1); opacity: 0; } }
-.h-bay { position: relative; flex: none; height: 100%; width: calc(var(--u) * (.1 + var(--n, 2) * .42)); min-width: calc(var(--u) * .9); }
+.h-bay { --st: max(.2, min(.42, calc(2 / var(--n, 2)))); position: relative; flex: none; height: 100%; width: calc(var(--u) * (.5 + (var(--n, 2) - 1) * var(--st))); min-width: calc(var(--u) * .9); } /* a big fleet moors closer together so the buildings stay within reach */
 .h-pier { position: absolute; left: 0; right: 0; top: 80%; height: 3.5%; min-height: 8px; background: linear-gradient(180deg, #d9a05b, #b9783a); border-top: 3px solid #7a4a1e; display: flex; justify-content: space-between; padding: 0 12px; }
 .h-pier i { display: block; width: 9px; height: calc(var(--u) * .1); background: #7a4a1e; border-radius: 3px; margin-top: 3px; }
-.moored { position: absolute; left: calc(var(--u) * (.04 + var(--i) * .42)); height: calc(var(--u) * .3); aspect-ratio: 240 / 200; background: none; border: 0; padding: 0; z-index: 2;
+.moored { position: absolute; left: calc(var(--u) * (.04 + var(--i) * var(--st))); height: calc(var(--u) * .3); aspect-ratio: 240 / 200; background: none; border: 0; padding: 0; z-index: 2;
   bottom: calc(var(--hh) * .15 - (1 - var(--wl)) * var(--u) * .3); }
 .moored .ship-bob { pointer-events: none; }
 .moored .lbl { position: absolute; left: 50%; top: calc(var(--wl) * 100% + 12px); transform: translateX(-50%); white-space: nowrap; background: rgba(255,255,255,.92); border-radius: 12px; padding: 1px 8px; font-weight: 800; font-size: clamp(.75rem, calc(var(--u) * .03), .95rem); z-index: 3; color: var(--ink); }
 .moored .fstar { position: absolute; top: -2%; left: 50%; transform: translateX(-50%); font-size: calc(var(--u) * .06); z-index: 3; }
 .moored:active { transform: scale(.97); }
-.h-arrow { position: absolute; top: 40%; z-index: 6; width: 64px; height: 64px; font-size: 1.5rem; opacity: .92; }
+.h-bay.crowd .moored.alt .lbl { top: calc(var(--wl) * 100% + 12px + 1.9em); } /* neighbouring names in a big fleet sit on two rows */
+.h-arrow { position: absolute; top: 12%; z-index: 6; width: 64px; height: 64px; font-size: 1.5rem; opacity: .92; }
 .h-arrow.left { left: 6px; } .h-arrow.right { right: 6px; }
 .fleetship { z-index: 1; }
 

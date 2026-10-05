@@ -21,7 +21,7 @@
     if (!node.querySelector('.game-stage')) { try { RG.flushRankUp(4500); } catch (e) { /* ignore */ } }
   }
   function toast(msg, ms) {
-    var t = h('div', { class: 'pill toast', role: 'status', text: msg, style: 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:3000;max-width:90vw;text-align:center' });
+    var t = h('div', { class: 'pill toast', role: 'status', text: msg, style: 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:3000;width:max-content;max-width:90vw;text-align:center;pointer-events:none' });
     document.body.appendChild(t);
     setTimeout(function () { if (t.parentNode) t.remove(); }, ms || 2600);
   }
@@ -78,6 +78,8 @@
     if (!artHas(kind, id)) return '';
     try { var r = RG.art[kind](id, opts); return typeof r === 'string' ? r : ''; } catch (e) { return ''; }
   }
+  // images in scrolling lists (islands, shop, harbor) load on demand instead of all at once
+  function lazy(html) { return html ? html.replace(/<img /g, '<img loading="lazy" decoding="async" ') : html; }
   function artFn(kind, arg) { // chest / coin / scene take no id
     try { if (RG.art && typeof RG.art[kind] === 'function') { var r = RG.art[kind](arg); return typeof r === 'string' ? r : ''; } } catch (e) { /* ignore */ }
     return '';
@@ -128,6 +130,7 @@
     function it(cat) { return eq && eq[cat] ? g.get(eq[cat]) : null; }
     var sail = it('sail'), hull = it('hull'), flag = it('flag'), pet = it('pet');
     if (sail) o.sail = sail.color;
+    if (sail && sail.mark) o.sailMark = sail.mark;
     if (hull) o.hull = hull.color;
     if (flag) o.flag = flag.emoji;
     if (pet) o.pet = pet.emoji;
@@ -295,7 +298,7 @@
       var isQ = g === quiz, locked = isQ && ch.locked;
       var pending = ch.locked && !isQ && ch.missing.indexOf(g.id) >= 0;
       var practice = !isQ && recommended.indexOf(g.id) >= 0;
-      var islandArt = artHTML('island', g.id);
+      var islandArt = lazy(artHTML('island', g.id));
       var b = h('button', { class: 'island' + (isQ ? ' challenge' : '') + (locked ? ' locked' : '') + (pending ? ' pending' : ''), 'aria-label': g.title, 'aria-disabled': locked ? 'true' : false, dataset: { id: g.id } },
         islandArt ? h('div', { class: 'land has-art' }, h('div', { class: 'land-art', html: islandArt, 'aria-hidden': 'true' })) : h('div', { class: 'land', text: g.emoji }),
         h('div', { class: 'name', text: isQ ? "Captain's Challenge" : g.title }),
@@ -341,7 +344,7 @@
 
     var tools = h('div', { class: 'toolbar' },
       tbBtn('🏪', 'Shop', function () { openShop(); }),
-      tbBtn('🏝️', 'Harbor', harborScreen, 'harbor-btn'),
+      tbBtn('🏝️', 'Harbor', function () { harborScreen(); }, 'harbor-btn'),
       tbBtn('📒', 'Stickers', openStickers),
       tbBtn('📜', 'Why Read?', openWhyRead),
       fsButton(true));
@@ -351,11 +354,35 @@
       h('div', { class: 'scroll' }, h('div', { class: 'map-body' }, boatEl(),
         gl ? h('div', { class: 'growth', role: 'status', text: '🌟 ' + gl }) : null, path)), tools);
     show(s);
+    var book = RG.progress.takeBookReward();
+    var utok = screenToken;
+    if (book) setTimeout(function () { if (utok === screenToken) bookCelebration(book); }, 450);
     if (quiz && ch.allDone && !ch.unlocked) { // first return to the map after the final voyage
       RG.progress.setUnlocked(true);
-      var utok = screenToken;
-      setTimeout(function () { if (utok === screenToken) unlockCelebration(); }, 500);
-    } else if (greet) RG.speak('Ahoy, ' + p.name + '! Pick an island.', { mood: 'happy' });
+      setTimeout(function () { if (utok === screenToken) unlockCelebration(); }, book ? 1200 : 500);
+    } else if (book) { /* the book celebration speaks */ } else if (greet) RG.speak('Ahoy, ' + p.name + '! Pick an island.', { mood: 'happy' });
+  }
+
+  // a grown-up rewarded real-book reading: a happy message the next time the map opens, then any rank-up that came with it
+  function bookCelebration(b) {
+    var coinArt = artFn('coin'), msg = 'Your grown-up says you read a real book! +' + b.n + ' 🪙';
+    var done = false;
+    function finish() {
+      if (done) return; done = true;
+      if (overlay.parentNode) overlay.remove();
+      var rk = RG.rank();
+      if (rk.index > b.from && root.querySelector('.map-body')) RG.rankUp(rk.index, b.from);
+    }
+    var overlay = h('div', { class: 'rankup bookreward', role: 'dialog', 'aria-label': 'Real book reward' },
+      h('div', { class: 'rankup-card' },
+        h('div', { class: 'rankup-emoji', text: '📚' }),
+        h('div', { class: 'rankup-title', text: 'You read a real book!' }),
+        h('div', { class: 'rankup-text' }, 'Your grown-up says you read a real book! +' + b.n + ' ', coinArt ? h('span', { class: 'inline-coin', html: coinArt, 'aria-hidden': 'true' }) : '🪙'),
+        press(h('button', { class: 'btn primary', text: 'Hooray!' }), finish)));
+    document.body.appendChild(overlay);
+    try { RG.sfx.win(); RG.celebrate(overlay.querySelector('.rankup-emoji')); } catch (e) { /* ignore */ }
+    RG.speak('Your grown-up says you read a real book! Plus ' + b.n + ' coins!', { mood: 'excited' });
+    setTimeout(finish, 9000);
   }
 
   function unlockCelebration() {
@@ -404,7 +431,7 @@
 
   /* ---------- shop ---------- */
   var shopTab = 'ships';
-  function badgeHTML(idx) { return artHTML('badge', idx) || ''; }
+  function badgeHTML(idx) { return lazy(artHTML('badge', idx)) || ''; }
   function lockOverlay(rankIdx) {
     var b = badgeHTML(rankIdx);
     return h('div', { class: 'lock-ov' },
@@ -438,7 +465,7 @@
         var p = RG.profile(), eq = RG.shop.equipped(), flagId = RG.ships.flagship().id, grid = h('div', { class: 'shop-grid' });
         RG.ships.list.forEach(function (s) {
           var owned = RG.ships.owned(s.id), isFlag = owned && flagId === s.id, can = RG.ships.canBuy(s.id);
-          var pv = h('div', { class: 'art ship-art', html: shipMarkup(s.id, p, eq, isFlag), 'aria-hidden': 'true' });
+          var pv = h('div', { class: 'art ship-art', html: lazy(shipMarkup(s.id, p, eq, isFlag)), 'aria-hidden': 'true' });
           var o = { id: s.id, pv: pv, name: s.name, cls: (owned ? 'owned' : '') + (isFlag ? ' equipped' : '') };
           if (owned) {
             o.btn = isFlag ? { label: '⭐ Flagship', cls: 'green', fn: function () { RG.speak('The ' + s.name + ' is your flagship!'); } }
@@ -465,7 +492,7 @@
       function harborTab(panel) {
         var grid = h('div', { class: 'shop-grid' });
         RG.buildings.list.forEach(function (b) {
-          var owned = RG.buildings.owned(b.id), can = RG.buildings.canBuy(b.id), svg = artHTML('building', b.id);
+          var owned = RG.buildings.owned(b.id), can = RG.buildings.canBuy(b.id), svg = lazy(artHTML('building', b.id));
           var o = { id: b.id, pv: artNode(svg, BUILDING_EMOJI[b.id]), name: b.name, cls: owned ? 'owned' : '' };
           if (owned) o.btn = { label: '🏝️ Visit', cls: 'green', fn: function () { close(); harborScreen(); } };
           else if (can.reason === 'rank') { o.cls = 'locked'; o.lock = b.rank; o.sub = '🪙 ' + b.price; o.onTap = function () { sayLocked(b.name, b.rank); }; }
@@ -493,7 +520,7 @@
           RG.shop.items.filter(function (i) { return i.cat === c[0]; }).forEach(function (item) {
             var owned = RG.shop.owned(item.id), on = eq[item.cat] === item.id, locked = RG.shop.locked(item.id), can = RG.coins.balance() >= item.price;
             var pv = item.emoji ? h('div', { class: 'art emoji', text: item.emoji, 'aria-hidden': 'true' })
-              : h('div', { class: 'art' }, h('div', { class: 'sw', style: 'background:' + (item.color === 'rainbow' ? 'linear-gradient(90deg,#ff5e7e,#ffc93c,#34c759,#4cc3ff,#a77bff)' : item.color) }));
+              : h('div', { class: 'art' }, h('div', { class: 'swatch', style: 'background:' + (item.color === 'rainbow' ? 'linear-gradient(90deg,#ff5e7e,#ffc93c,#34c759,#4cc3ff,#a77bff)' : item.color) }));
             var o = { id: item.id, pv: pv, name: item.name, cls: (owned ? 'owned' : '') + (on ? ' equipped' : '') };
             if (owned) o.btn = { label: on ? 'On!' : 'Wear', cls: on ? 'green' : '', fn: function () { RG.shop.toggle(item.id); render(); } };
             else if (locked) { o.cls = 'locked'; o.lock = item.rank; o.sub = '🪙 ' + item.price; o.onTap = function () { sayLocked(item.name, item.rank); }; }
@@ -532,6 +559,8 @@
         var old = document.querySelector('.map-body .map-scene');
         if (old) old.replaceWith(boatEl());
         try { RG.coins.refresh(); } catch (e) { /* ignore */ }
+        var hs = document.querySelector('.harbor-scroll'); // opened from the Harbor: show new buildings, ships and the coin count there too
+        if (hs) harborScreen(true, hs.scrollLeft);
       };
     });
   }
@@ -615,13 +644,13 @@
     setTimeout(function () { if (node.parentNode) node.remove(); plot.classList.remove('tapped'); }, 1600);
   }
 
-  function harborScreen() {
+  function harborScreen(quiet, keepLeft) {
     var p = RG.profile(), tok = null;
     var ACT = { library: openLibrary, 'treasure-vault': openStickers, 'map-room': openWhyRead };
     var bookCount = 0; try { bookCount = libraryBooks().books.length; } catch (e) { bookCount = 0; }
 
     function plotEl(b) {
-      var owned = RG.buildings.owned(b.id), can = RG.buildings.canBuy(b.id), svg = artHTML('building', b.id, b.id === 'golden-statue' ? { avatar: p.avatar } : {}), el;
+      var owned = RG.buildings.owned(b.id), can = RG.buildings.canBuy(b.id), svg = lazy(artHTML('building', b.id, b.id === 'golden-statue' ? { avatar: p.avatar } : {})), el;
       var art = svg ? h('div', { class: 'p-art', html: svg, 'aria-hidden': 'true' }) : h('div', { class: 'p-art emoji', text: BUILDING_EMOJI[b.id], 'aria-hidden': 'true' });
       if (owned) {
         el = h('button', { class: 'plot owned', type: 'button', dataset: { id: b.id }, 'aria-label': b.name }, art,
@@ -663,12 +692,13 @@
       Array.prototype.forEach.call(bay.querySelectorAll('.moored'), function (x) { x.remove(); });
       var eq = RG.shop.equipped(), flagId = RG.ships.flagship().id, fleet = RG.ships.fleet();
       bay.style.setProperty('--n', Math.max(2, fleet.length));
+      bay.classList.toggle('crowd', fleet.length > 4);
       fleet.forEach(function (s, i) {
         var isFlag = s.id === flagId;
-        var m = h('button', { class: 'moored' + (isFlag ? ' flag' : ''), type: 'button', dataset: { ship: s.id }, 'aria-label': s.name + (isFlag ? ', your flagship' : ''),
+        var m = h('button', { class: 'moored' + (isFlag ? ' flag' : '') + (i % 2 ? ' alt' : ''), type: 'button', dataset: { ship: s.id }, 'aria-label': s.name + (isFlag ? ', your flagship' : ''),
           style: '--i:' + i + ';--wl:' + (artHas('ship', s.id) ? waterline(s.id) : 0.78) },
           isFlag ? h('span', { class: 'fstar', text: '⭐', 'aria-hidden': 'true' }) : null,
-          h('div', { class: 'ship-bob', html: shipMarkup(s.id, p, eq, isFlag) }), h('div', { class: 'ship-wave', 'aria-hidden': 'true' }),
+          h('div', { class: 'ship-bob', html: lazy(shipMarkup(s.id, p, eq, isFlag)) }), h('div', { class: 'ship-wave', 'aria-hidden': 'true' }),
           h('div', { class: 'lbl', text: s.name }));
         press(m, function () {
           if (RG.ships.flagship().id !== s.id) { RG.ships.setFlagship(s.id); RG.speak('The ' + s.name + ' is your flagship!', { mood: 'happy' }); renderBay(); }
@@ -706,10 +736,11 @@
     var s = h('div', { class: 'screen harbor' }, top, h('div', { class: 'harbor-wrap' }, scroller, left, right));
     show(s);
     tok = screenToken;
+    if (keepLeft) scroller.scrollLeft = keepLeft;
     setTimeout(function () { if (tok === screenToken) arrows(); }, 60);
     setTimeout(function () { if (tok === screenToken) arrows(); }, 600);
     var n = RG.buildings.mine().length;
-    RG.speak(n ? "Welcome to Captain's Cove! Tap a building." : "Welcome to Captain's Cove! Buy buildings in the shop to fill it up.", { mood: 'happy' });
+    if (!quiet) RG.speak(n ? "Welcome to Captain's Cove! Tap a building." : "Welcome to Captain's Cove! Buy buildings in the shop to fill it up.", { mood: 'happy' });
   }
 
   /* ---------- stickers ---------- */
@@ -875,7 +906,10 @@
       closeGU = close;
       sheet.classList.add('gu');
       var body = h('div');
-      sheet.appendChild(h('h2', { text: '⚙️ Grown-ups' }));
+      var closeBtn = sheet.querySelector('.close'); // sticky header bar: the title and the close button sit above the content, never over it
+      var head = h('div', { class: 'gu-head' }, h('h2', { text: '⚙️ Grown-ups' }));
+      if (closeBtn) head.appendChild(closeBtn);
+      sheet.appendChild(head);
       sheet.appendChild(body);
       var confirmId = null;
       var SKILL_NAMES = { letters: 'Letters', 'beginning-sounds': 'First sounds', writing: 'Writing letters', rhyme: 'Rhymes', phonics: 'Reading words (decoding)',
@@ -971,6 +1005,13 @@
           body.appendChild(h('div', { class: 'note fleet-note' }, 'Fleet (' + fl.length + ' of ' + RG.ships.list.length + '): ' + fl.map(function (x) { return x.name; }).join(', ') + '. Flagship: ' + flg.name +
             '. Harbor buildings (' + bl.length + ' of ' + RG.buildings.list.length + '): ' + (bl.length ? bl.map(function (x) { return x.name; }).join(', ') : 'none yet') +
             '. Crew: ' + (d.crew.length ? d.crew.map(function (id) { var it = RG.shop.get(id); return it ? it.name : id; }).join(', ') : 'none') + '.'));
+          body.appendChild(h('div', { class: 'gu-row gu-book' },
+            press(h('button', { class: 'btn small book-reward', type: 'button', text: '📚 Reward real-book reading', dataset: { book: p.id } }), function () {
+              RG.coins.add(25, 'book', p.id);
+              toast('+25 coins for ' + p.name + '!', 3200);
+              render();
+            }),
+            h('span', { class: 'gu-help', text: 'Use this when your child reads a real book with you.' })));
           var cs = RG.progress.challenge(p.id);
           body.appendChild(h('div', { class: 'gu-row' }, h('label', { text: 'Challenge Island' }),
             toggleSwitch(cs.override, function (v) { RG.progress.setUnlockOverride(v, p.id); render(); }, 'Unlock Challenge Island now for ' + p.name),
@@ -980,7 +1021,7 @@
           body.appendChild(h('div', { class: 'gu-sub', text: 'This week' }));
           body.appendChild(h('div', { class: 'gu-stats' },
             statBox(wk.mastered, 'words mastered'), statBox(wk.learned, 'tricky words practised'), statBox(wk.stories, 'stories read'),
-            statBox(wk.voyages, 'voyages finished'), statBox(mins, mins === 1 ? 'minute played' : 'minutes played')));
+            statBox(wk.voyages, 'voyages finished'), statBox(wk.books, wk.books === 1 ? 'real-book reward' : 'real-book rewards'), statBox(mins, mins === 1 ? 'minute played' : 'minutes played')));
           // skills with level override
           var rows = skillsFor(p).map(function (sk) {
             var st = d.skills[sk], lv = RG.progress.level(sk, p.id), max = RG.progress.maxLevel(sk, p.id);

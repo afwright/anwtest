@@ -1,5 +1,5 @@
 {
-  "total_usd": 1.2375,
+  "total_usd": 1.2801,
   "calls": [
     {
       "key": "ship:sloop",
@@ -580,6 +580,26 @@
         "total_tokens": 1138
       },
       "at": "2026-10-05T05:13:54+00:00"
+    },
+    {
+      "key": "building:sea-fort",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04263,
+      "usage": {
+        "input_tokens": 78,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 78
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1134
+      },
+      "at": "2026-10-05T05:14:10+00:00"
     }
   ]
 }

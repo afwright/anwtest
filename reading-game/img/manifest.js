@@ -14,6 +14,9 @@ window.RG_IMAGES = {
   "building:map-room": {
     "src": "img/building/map-room.webp"
   },
+  "building:sea-fort": {
+    "src": "img/building/sea-fort.webp"
+  },
   "building:shipyard": {
     "src": "img/building/shipyard.webp"
   },

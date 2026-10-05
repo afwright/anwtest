@@ -67,12 +67,12 @@ RULES['schooner'] = dict(
 )
 RULES['submarine'] = dict(
     # the yellow body is the hull; the conning tower + periscope (a submarine's "sail") is the sail region
-    hull=dict(rules=[dict(hue=(30, 60), s=(0.3, 1), v=(0.5, 1))], open=2, keep=3, min=0.004,
-              cut=[(0.36, 0.0, 0.72, 0.355), (0, 0, 0.255, 1), (0.3, 0.66, 0.42, 1)]),
+    hull=dict(rules=[dict(hue=(30, 60), s=(0.3, 1), v=(0.5, 1))], open=2, keep=3, min=0.006,
+              cut=[(0.36, 0.0, 0.72, 0.355), (0, 0, 0.255, 1)]),
     sail=dict(rules=[dict(hue=(25, 60), s=(0.3, 1), v=(0.4, 1), box=(0.36, 0.0, 0.72, 0.355))], open=2, keep=2, min=0.002),
 )
 RULES['brigantine'] = dict(
-    hull=dict(rules=[dict(hue=(325, 45), s=(0.25, 1), v=(0.3, 0.72), box=(0, 0.6, 1, 1))], open=3, keep=1),
+    hull=dict(rules=[dict(hue=(290, 45), s=(0.15, 1), v=(0.27, 0.72), box=(0, 0.6, 1, 1))], open=3, keep=1),
     sail=dict(rules=[dict(WHITE, box=(0, 0, 1, 0.75))], open=3, keep=6, min=0.004),
 )
 RULES['galleon'] = dict(
@@ -80,7 +80,7 @@ RULES['galleon'] = dict(
     sail=dict(rules=[dict(WHITE, box=(0, 0, 1, 0.75))], open=3, keep=6, min=0.004),
 )
 RULES['royal-flagship'] = dict(
-    hull=dict(rules=[dict(hue=(15, 40), s=(0.6, 1), v=(0.5, 1), box=(0, 0.6, 1, 1))], open=3, keep=3, min=0.004),
+    hull=dict(rules=[dict(hue=(15, 40), s=(0.6, 1), v=(0.5, 1), box=(0, 0.6, 1, 1))], open=3, keep=3, min=0.004, close=5),
     sail=dict(rules=[dict(WHITE, box=(0, 0, 1, 0.72))], open=3, keep=6, min=0.004),
 )
 RULES['golden-legend'] = dict(
@@ -144,6 +144,9 @@ def build_region(spec, rgb, alpha, h, s, v, border):
     if spec['open']:
         m = ndi.binary_opening(m, disk(spec['open']))
     m = ndi.binary_closing(m, disk(1))
+    if spec.get('close'):  # bridge thin gold highlights/streaks inside a region, but never repaint outlines or the rim
+        m = ndi.binary_closing(np.pad(m, 8), disk(spec['close']))[8:-8, 8:-8] & (alpha > 0.9) & ~border & (v > 0.4)
+        m = ndi.binary_opening(m, disk(2))
     # fill small holes (specular spots etc.), keep big ones (windows, portholes)
     holes, n = ndi.label(~m)
     sizes = ndi.sum(~m, holes, range(1, n + 1))

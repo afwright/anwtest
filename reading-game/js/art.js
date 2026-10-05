@@ -457,23 +457,76 @@
     if (typeof v === 'string') return { src: v };
     return v.src ? v : null;
   }
-  // Raster ships: sail/hull recolor are NOT applied (the picture is fixed); the pet and an emoji flag are overlaid as
-  // absolutely positioned spans. The golden-statue raster gets opts.avatar overlaid the same way.
+  // Raster ships. The base picture is never altered. Sail/hull cosmetics are painted by tint layers on top of it: each ship
+  // has optional grayscale shading layers (img/ship/<id>.hull.webp / .sail.webp, built offline by tools/make-ship-layers.py,
+  // alpha = region) listed in the manifest as r.hull / r.sail. A layer element paints `layer * colour` (multiply, so the shading
+  // survives) and is clipped to the region by the same image used as a CSS mask. Where CSS masks are unsupported the plain
+  // picture is shown. The pet, the emoji flag and the sail mark (placed at r.sailCenter) are overlaid as spans.
+  // The golden-statue raster gets opts.avatar overlaid the same way.
   var cssDone = false;
   function ensureCss() {
     if (cssDone) return; cssDone = true;
     try {
       var st = document.createElement('style');
       st.textContent = '.rg-art-wrap{position:relative;display:block;width:100%;height:100%;container-type:size}' +
-        '.rg-art-wrap>.rg-ov{position:absolute;line-height:1;font-size:15cqmin;transform:translate(-50%,-50%);pointer-events:none}';
+        '.rg-art-wrap>.rg-ov{position:absolute;line-height:1;font-size:15cqmin;transform:translate(-50%,-50%);pointer-events:none}' +
+        '.rg-art-wrap>.rg-tint{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;background-blend-mode:multiply}';
       document.head.appendChild(st);
     } catch (e) {}
   }
+  var maskOk = null;
+  function masksWork() {
+    if (maskOk === null) {
+      try {
+        maskOk = !!(window.CSS && CSS.supports && (CSS.supports('mask-image', 'url(a.png)') || CSS.supports('-webkit-mask-image', 'url(a.png)')));
+      } catch (e) { maskOk = false; }
+    }
+    return maskOk;
+  }
+  var RAINBOW = 'linear-gradient(135deg,#ff5e7e 22%,#ffc93c 36%,#34c759 50%,#4cc3ff 64%,#a77bff 78%)';
+  var SAFE_COLOR = /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([0-9\s.,%\/-]+\))$/i;
+  function tintFill(c) {
+    if (c === 'rainbow') return RAINBOW;
+    return typeof c === 'string' && SAFE_COLOR.test(c) ? c : '';
+  }
+  function tintLayer(src, fill, opacity) {
+    var u = 'url(' + String(src).replace(/[^A-Za-z0-9_\-.\/]/g, '') + ')';
+    return '<span class="rg-tint" aria-hidden="true" style="background:' + u + ' center/contain no-repeat,' + fill + ';'+
+      '-webkit-mask:' + u + ' center/contain no-repeat;mask:' + u + ' center/contain no-repeat' +
+      (opacity && opacity < 1 ? ';opacity:' + opacity : '') + '"></span>';
+  }
+  // the emoji printed on a sail cosmetic (core.js shop), looked up by its colour when the caller did not pass sailMark
+  function markFor(sail) {
+    try {
+      var it = RG.shop.items, i;
+      for (i = 0; i < it.length; i++) if (it[i].cat === 'sail' && it[i].color === sail) return it[i].mark || '';
+    } catch (e) {}
+    return '';
+  }
   function ov(x, y, size, ch) { return '<span class="rg-ov" style="left:' + x + '%;top:' + y + '%;font-size:' + size + 'cqmin">' + ch + '</span>'; }
-  function overlay(r, spans) {
-    if (!spans) return img(r.src);
+  // like ov(), but x/y are fractions of the picture, which is drawn "contain"ed in the (possibly non-square) box
+  function ovPic(x, y, size, ch) {
+    var m = 'min(100cqw,100cqh)';
+    return '<span class="rg-ov" style="left:calc(50cqw + ' + (x - 0.5).toFixed(4) + ' * ' + m + ');top:calc(50cqh + ' + (y - 0.5).toFixed(4) + ' * ' + m + ');font-size:' + size + 'cqmin">' + ch + '</span>';
+  }
+  function shipTints(r, op) {
+    if (!masksWork()) return '';
+    var s = '', fill;
+    if (r.hull && (fill = tintFill(op.hull))) s += tintLayer(r.hull, fill, r.hullStrength);
+    if (r.sail && (fill = tintFill(op.sail))) {
+      s += tintLayer(r.sail, fill);
+      var mark = op.sailMark || markFor(op.sail), c = r.sailCenter;
+      if (mark && c && c.length === 2) {
+        var size = Math.max(6, Math.min(22, (r.sailSize || 0.2) * 100 * 0.75));
+        s += ovPic(c[0], c[1], size.toFixed(1), mark);
+      }
+    }
+    return s;
+  }
+  function overlay(r, spans, tints) {
+    if (!spans && !tints) return img(r.src);
     ensureCss();
-    return '<span class="rg-art-wrap">' + img(r.src) + spans + '</span>';
+    return '<span class="rg-art-wrap">' + img(r.src) + (tints || '') + (spans || '') + '</span>';
   }
   function known(kind, id) {
     if (kind === 'ship') return SHIPS.indexOf(id) >= 0;
@@ -502,7 +555,7 @@
         var wl = (r.waterline || 0.88) * 100, op = opts || {}, sp = '';
         if (op.pet) sp += op.pet === '\uD83D\uDC2C' ? ov(88, wl + 4, 16, op.pet) : ov(62, wl - 30, 14, op.pet);
         if (op.flag && !isColor(op.flag)) sp += ov(54, 8, 10, op.flag);
-        return overlay(r, sp);
+        return overlay(r, sp, shipTints(r, op));
       }
       if (SHIPS.indexOf(id) < 0) id = 'little-sailboat';
       return guard(function () { return shipSvg(id, opts || {}); });

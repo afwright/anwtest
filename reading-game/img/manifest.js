@@ -1,5 +1,61 @@
-/* AI ships only for now: islands/buildings/badges use the SVG set until the rest are generated (tools/generate-art.py skips existing files). */
 window.RG_IMAGES = {
+  "building:dock": {
+    "src": "img/building/dock.webp"
+  },
+  "building:fish-market": {
+    "src": "img/building/fish-market.webp"
+  },
+  "building:library": {
+    "src": "img/building/library.webp"
+  },
+  "building:lighthouse": {
+    "src": "img/building/lighthouse.webp"
+  },
+  "building:map-room": {
+    "src": "img/building/map-room.webp"
+  },
+  "building:shipyard": {
+    "src": "img/building/shipyard.webp"
+  },
+  "building:treasure-vault": {
+    "src": "img/building/treasure-vault.webp"
+  },
+  "island:blend-cannon": {
+    "src": "img/island/blend-cannon.webp"
+  },
+  "island:captains-quiz": {
+    "src": "img/island/captains-quiz.webp"
+  },
+  "island:letter-pop": {
+    "src": "img/island/letter-pop.webp"
+  },
+  "island:letter-trace": {
+    "src": "img/island/letter-trace.webp"
+  },
+  "island:reading-quest": {
+    "src": "img/island/reading-quest.webp"
+  },
+  "island:rhyme-boat": {
+    "src": "img/island/rhyme-boat.webp"
+  },
+  "island:sentence-match": {
+    "src": "img/island/sentence-match.webp"
+  },
+  "island:sight-fishing": {
+    "src": "img/island/sight-fishing.webp"
+  },
+  "island:sound-hunt": {
+    "src": "img/island/sound-hunt.webp"
+  },
+  "island:story-cove": {
+    "src": "img/island/story-cove.webp"
+  },
+  "island:syllable-saw": {
+    "src": "img/island/syllable-saw.webp"
+  },
+  "island:word-builder": {
+    "src": "img/island/word-builder.webp"
+  },
   "ship:brigantine": {
     "src": "img/ship/brigantine.webp",
     "waterline": 0.88

@@ -599,3 +599,16 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .h-arrow { position: absolute; top: 40%; z-index: 6; width: 64px; height: 64px; font-size: 1.5rem; opacity: .92; }
 .h-arrow.left { left: 6px; } .h-arrow.right { right: 6px; }
 .fleetship { z-index: 1; }
+
+/* phone held sideways: slim header + one-row toolbar so the harbor scene fits */
+@media (max-height: 520px) {
+  .topbar { padding: 4px 10px; gap: 6px; }
+  .topbar .iconbtn { width: 56px; height: 56px; font-size: 1.6rem; }
+  .topbar .pill { min-height: 44px; }
+  .toolbar { gap: 8px; padding: 4px 10px 8px; flex-wrap: nowrap; }
+  .toolbar .btn { min-height: 56px; font-size: 1rem; padding: 0 12px; gap: 6px; border-width: 4px; }
+  .toolbar .btn.tb .ti { font-size: 1.3rem; }
+  .toolbar .btn.fs-toggle .fs-lbl { display: none; }
+  .rk-badge { width: 40px; height: 40px; }
+  .harbor-top .btn.small { min-height: 56px; }
+}

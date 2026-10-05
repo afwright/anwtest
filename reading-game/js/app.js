@@ -682,8 +682,8 @@
     var world = h('div', { class: 'harbor-world' },
       h('div', { class: 'h-sky', 'aria-hidden': 'true' }, h('div', { class: 'sun', text: '☀️' }), h('div', { class: 'cloud c1', text: '☁️' }), h('div', { class: 'cloud c2', text: '☁️' }), h('div', { class: 'cloud c3', text: '☁️' })),
       h('div', { class: 'h-sea', 'aria-hidden': 'true' }, h('div', { class: 'sw sw1' }), h('div', { class: 'sw sw2' })),
-      h('div', { class: 'h-landsec' }, h('div', { class: 'h-land', 'aria-hidden': 'true' }), plots),
-      bay);
+      bay,
+      h('div', { class: 'h-landsec' }, h('div', { class: 'h-land', 'aria-hidden': 'true' }), plots));
     renderBay();
     var scroller = h('div', { class: 'harbor-scroll', tabindex: '-1' }, world);
     var left = press(h('button', { class: 'iconbtn h-arrow left', type: 'button', 'aria-label': 'Scroll left', text: '◀' }), function () { scroller.scrollBy({ left: -Math.max(200, scroller.clientWidth * 0.7), behavior: 'smooth' }); });

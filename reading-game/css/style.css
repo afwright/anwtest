@@ -557,8 +557,8 @@ button:focus-visible, input:focus-visible { outline: 4px solid #fff; outline-off
 .h-sky .cloud { position: absolute; font-size: calc(var(--u) * .1); opacity: .9; animation: sceneDrift 90s linear infinite; }
 .h-sky .cloud.c1 { top: 8%; left: 10%; animation: none; } .h-sky .cloud.c2 { top: 16%; left: 45%; animation: none; } .h-sky .cloud.c3 { top: 6%; left: 78%; animation: none; }
 .h-sea { position: absolute; left: 0; right: 0; top: 50%; bottom: 0; background: linear-gradient(180deg, #5fc4f3 0%, #2aa7e8 45%, #0d6ebd 100%); border-top: 3px solid rgba(255,255,255,.8); }
-.h-landsec { position: relative; flex: none; height: 100%; padding: 0 calc(var(--u) * .1) 0 calc(var(--u) * .04); }
-.h-land { position: absolute; left: 0; right: 0; top: 57%; height: 24%; background: linear-gradient(180deg, #7ddc6a 0 24%, #ffe3a3 24% 90%, #f2c46b 90%); border-radius: 0 60px 60px 0 / 0 50% 50% 0; box-shadow: 0 8px 0 rgba(10,60,110,.25); border-top: 4px solid #4fb84a; }
+.h-landsec { position: relative; flex: none; height: 100%; padding: 0 calc(var(--u) * .08); }
+.h-land { position: absolute; left: 0; right: 0; top: 57%; height: 24%; background: linear-gradient(180deg, #7ddc6a 0 24%, #ffe3a3 24% 90%, #f2c46b 90%); border-radius: 60px / 50%; box-shadow: 0 8px 0 rgba(10,60,110,.25); border-top: 4px solid #4fb84a; }
 .h-plots { position: relative; display: flex; align-items: flex-start; gap: calc(var(--u) * .015); height: 100%; }
 .plot { position: relative; flex: none; width: calc(var(--u) * .33); margin-top: calc(var(--hh) * .585 - var(--u) * .3); display: flex; flex-direction: column; align-items: center; background: none; border: 0; padding: 0; color: var(--ink); }
 .p-art { width: calc(var(--u) * .3); height: calc(var(--u) * .3); display: flex; align-items: flex-end; justify-content: center; filter: drop-shadow(0 4px 0 rgba(10,60,110,.2)); }

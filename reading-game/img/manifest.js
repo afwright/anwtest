@@ -1,9 +1,45 @@
 window.RG_IMAGES = {
+  "badge:0": {
+    "src": "img/badge/0.webp"
+  },
+  "badge:1": {
+    "src": "img/badge/1.webp"
+  },
+  "badge:10": {
+    "src": "img/badge/10.webp"
+  },
+  "badge:2": {
+    "src": "img/badge/2.webp"
+  },
+  "badge:3": {
+    "src": "img/badge/3.webp"
+  },
+  "badge:4": {
+    "src": "img/badge/4.webp"
+  },
+  "badge:5": {
+    "src": "img/badge/5.webp"
+  },
+  "badge:6": {
+    "src": "img/badge/6.webp"
+  },
+  "badge:7": {
+    "src": "img/badge/7.webp"
+  },
+  "badge:8": {
+    "src": "img/badge/8.webp"
+  },
+  "badge:9": {
+    "src": "img/badge/9.webp"
+  },
   "building:dock": {
     "src": "img/building/dock.webp"
   },
   "building:fish-market": {
     "src": "img/building/fish-market.webp"
+  },
+  "building:golden-statue": {
+    "src": "img/building/golden-statue.webp"
   },
   "building:library": {
     "src": "img/building/library.webp"
@@ -22,6 +58,15 @@ window.RG_IMAGES = {
   },
   "building:treasure-vault": {
     "src": "img/building/treasure-vault.webp"
+  },
+  "chest:closed": {
+    "src": "img/chest/closed.webp"
+  },
+  "chest:open": {
+    "src": "img/chest/open.webp"
+  },
+  "coin": {
+    "src": "img/coin.webp"
   },
   "island:blend-cannon": {
     "src": "img/island/blend-cannon.webp"
@@ -58,6 +103,9 @@ window.RG_IMAGES = {
   },
   "island:word-builder": {
     "src": "img/island/word-builder.webp"
+  },
+  "scene": {
+    "src": "img/scene.webp"
   },
   "ship:brigantine": {
     "src": "img/ship/brigantine.webp",

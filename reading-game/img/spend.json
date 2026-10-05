@@ -1,5 +1,5 @@
 {
-  "total_usd": 1.2801,
+  "total_usd": 1.9618,
   "calls": [
     {
       "key": "ship:sloop",
@@ -600,6 +600,326 @@
         "total_tokens": 1134
       },
       "at": "2026-10-05T05:14:10+00:00"
+    },
+    {
+      "key": "building:golden-statue",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.0426,
+      "usage": {
+        "input_tokens": 73,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 73
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1129
+      },
+      "at": "2026-10-05T05:14:23+00:00"
+    },
+    {
+      "key": "badge:0",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.0426,
+      "usage": {
+        "input_tokens": 72,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 72
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1128
+      },
+      "at": "2026-10-05T05:14:37+00:00"
+    },
+    {
+      "key": "badge:1",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04259,
+      "usage": {
+        "input_tokens": 70,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 70
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1126
+      },
+      "at": "2026-10-05T05:14:51+00:00"
+    },
+    {
+      "key": "badge:2",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.0426,
+      "usage": {
+        "input_tokens": 72,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 72
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1128
+      },
+      "at": "2026-10-05T05:15:06+00:00"
+    },
+    {
+      "key": "badge:3",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04258,
+      "usage": {
+        "input_tokens": 69,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 69
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1125
+      },
+      "at": "2026-10-05T05:15:21+00:00"
+    },
+    {
+      "key": "badge:4",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.0426,
+      "usage": {
+        "input_tokens": 71,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 71
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1127
+      },
+      "at": "2026-10-05T05:15:36+00:00"
+    },
+    {
+      "key": "badge:5",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04263,
+      "usage": {
+        "input_tokens": 77,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 77
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1133
+      },
+      "at": "2026-10-05T05:15:49+00:00"
+    },
+    {
+      "key": "badge:6",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04261,
+      "usage": {
+        "input_tokens": 74,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 74
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1130
+      },
+      "at": "2026-10-05T05:16:03+00:00"
+    },
+    {
+      "key": "badge:7",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04262,
+      "usage": {
+        "input_tokens": 76,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 76
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1132
+      },
+      "at": "2026-10-05T05:16:18+00:00"
+    },
+    {
+      "key": "badge:8",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04263,
+      "usage": {
+        "input_tokens": 77,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 77
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1133
+      },
+      "at": "2026-10-05T05:16:32+00:00"
+    },
+    {
+      "key": "badge:9",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04263,
+      "usage": {
+        "input_tokens": 77,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 77
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1133
+      },
+      "at": "2026-10-05T05:16:46+00:00"
+    },
+    {
+      "key": "badge:10",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04264,
+      "usage": {
+        "input_tokens": 80,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 80
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1136
+      },
+      "at": "2026-10-05T05:17:02+00:00"
+    },
+    {
+      "key": "chest:closed",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04258,
+      "usage": {
+        "input_tokens": 69,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 69
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1125
+      },
+      "at": "2026-10-05T05:17:15+00:00"
+    },
+    {
+      "key": "chest:open",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04258,
+      "usage": {
+        "input_tokens": 69,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 69
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1125
+      },
+      "at": "2026-10-05T05:17:30+00:00"
+    },
+    {
+      "key": "coin",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04258,
+      "usage": {
+        "input_tokens": 68,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 68
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1124
+      },
+      "at": "2026-10-05T05:17:43+00:00"
+    },
+    {
+      "key": "scene",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04265,
+      "usage": {
+        "input_tokens": 81,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 81
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1137
+      },
+      "at": "2026-10-05T05:17:57+00:00"
     }
   ]
 }

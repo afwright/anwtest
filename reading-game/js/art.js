@@ -517,7 +517,7 @@
       s += tintLayer(r.sail, fill);
       var mark = op.sailMark || markFor(op.sail), c = r.sailCenter;
       if (mark && c && c.length === 2) {
-        var size = Math.max(6, Math.min(22, (r.sailSize || 0.2) * 100 * 0.75));
+        var size = Math.max(8, Math.min(22, (r.sailSize || 0.2) * 100 * 0.75));
         s += ovPic(c[0], c[1], size.toFixed(1), mark);
       }
     }

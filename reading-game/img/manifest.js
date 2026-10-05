@@ -109,42 +109,113 @@ window.RG_IMAGES = {
   },
   "ship:brigantine": {
     "src": "img/ship/brigantine.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/brigantine.hull.webp",
+    "sail": "img/ship/brigantine.sail.webp",
+    "sailCenter": [
+      0.566,
+      0.447
+    ],
+    "sailSize": 0.182
   },
   "ship:fishing-boat": {
     "src": "img/ship/fishing-boat.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/fishing-boat.hull.webp",
+    "sail": "img/ship/fishing-boat.sail.webp",
+    "sailCenter": [
+      0.452,
+      0.514
+    ],
+    "sailSize": 0.097
   },
   "ship:galleon": {
     "src": "img/ship/galleon.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/galleon.hull.webp",
+    "sail": "img/ship/galleon.sail.webp",
+    "sailCenter": [
+      0.46,
+      0.423
+    ],
+    "sailSize": 0.191
   },
   "ship:golden-legend": {
     "src": "img/ship/golden-legend.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/golden-legend.hull.webp",
+    "hullStrength": 0.45,
+    "sail": "img/ship/golden-legend.sail.webp",
+    "sailCenter": [
+      0.457,
+      0.507
+    ],
+    "sailSize": 0.125
   },
   "ship:little-sailboat": {
     "src": "img/ship/little-sailboat.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/little-sailboat.hull.webp",
+    "sail": "img/ship/little-sailboat.sail.webp",
+    "sailCenter": [
+      0.585,
+      0.478
+    ],
+    "sailSize": 0.204
   },
   "ship:royal-flagship": {
     "src": "img/ship/royal-flagship.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/royal-flagship.hull.webp",
+    "sail": "img/ship/royal-flagship.sail.webp",
+    "sailCenter": [
+      0.637,
+      0.361
+    ],
+    "sailSize": 0.083
   },
   "ship:schooner": {
     "src": "img/ship/schooner.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/schooner.hull.webp",
+    "sail": "img/ship/schooner.sail.webp",
+    "sailCenter": [
+      0.314,
+      0.465
+    ],
+    "sailSize": 0.188
   },
   "ship:sloop": {
     "src": "img/ship/sloop.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/sloop.hull.webp",
+    "sail": "img/ship/sloop.sail.webp",
+    "sailCenter": [
+      0.324,
+      0.418
+    ],
+    "sailSize": 0.255
   },
   "ship:submarine": {
     "src": "img/ship/submarine.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/submarine.hull.webp",
+    "sail": "img/ship/submarine.sail.webp",
+    "sailCenter": [
+      0.522,
+      0.309
+    ],
+    "sailSize": 0.068
   },
   "ship:tugboat": {
     "src": "img/ship/tugboat.webp",
-    "waterline": 0.88
+    "waterline": 0.88,
+    "hull": "img/ship/tugboat.hull.webp",
+    "sail": "img/ship/tugboat.sail.webp",
+    "sailCenter": [
+      0.559,
+      0.415
+    ],
+    "sailSize": 0.107
   }
 };

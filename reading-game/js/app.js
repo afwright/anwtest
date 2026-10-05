@@ -139,7 +139,7 @@
     return art || boatSVG(profile, isFlag ? eq : {}, !isFlag);
   }
   var SCENE_SLOTS = [ // [left, scale, waterline offset as a fraction of the scene height]
-    { x: '60%', sc: 0.86, wy: 0.115 }, { x: '27%', sc: 0.56, wy: 0.15 }, { x: '8%', sc: 0.44, wy: 0.185 }
+    { x: '60%', sc: 0.86, wy: 0.115 }, { x: '30%', sc: 0.56, wy: 0.15 }, { x: '13%', sc: 0.44, wy: 0.185 }
   ];
   /* A self-contained harbor scene: its own sky, sun, clouds and sea band. Ships are positioned with bottom: inside the scene,
      from the art's waterline, so the hull always overlaps the water at every viewport size (no fixed-viewport horizon). */
@@ -153,7 +153,6 @@
         .forEach(function (s) { ships.push(s.id); });
     }
     var sceneArt = artFn('scene');
-    if (sceneArt) sceneArt = sceneArt.replace(/<svg\b([^>]*)>/, function (m, a) { return /preserveAspectRatio/.test(a) ? m : '<svg' + a + ' preserveAspectRatio="xMidYMid slice">'; });
     var sky = h('div', { class: 'scene-sky', 'aria-hidden': 'true' },
       sceneArt ? h('div', { class: 'scene-art', html: sceneArt }) : [h('div', { class: 'sun', text: '☀️' }), h('div', { class: 'cloud c1', text: '☁️' }), h('div', { class: 'cloud c2', text: '☁️' })]);
     var sea = h('div', { class: 'scene-sea', 'aria-hidden': 'true' }, h('div', { class: 'sw sw1' }), h('div', { class: 'sw sw2' }));
@@ -161,7 +160,7 @@
     ships.forEach(function (id, i) {
       var sl = SCENE_SLOTS[i];
       scene.appendChild(h('div', { class: 'ship-slot' + (i === 0 ? ' flagship' : ' fleetship'), dataset: { ship: id },
-        style: '--x:' + sl.x + ';--sc:' + sl.sc + ';--wy:' + sl.wy + ';--wl:' + wl },
+        style: '--x:' + sl.x + ';--sc:' + sl.sc + ';--wy:' + sl.wy + ';--wl:' + (artHas('ship', id) ? waterline(id) : 0.78) },
         h('div', { class: 'ship-bob', html: shipMarkup(id, p, eq, i === 0) }), h('div', { class: 'ship-wave', 'aria-hidden': 'true' })));
     });
     scene.appendChild(h('div', { class: 'scene-front', 'aria-hidden': 'true' }));

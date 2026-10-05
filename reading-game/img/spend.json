@@ -1,5 +1,5 @@
 {
-  "total_usd": 0.0428,
+  "total_usd": 0.5129,
   "calls": [
     {
       "key": "ship:sloop",
@@ -20,6 +20,226 @@
         "total_tokens": 1160
       },
       "at": "2026-10-05T05:01:29+00:00"
+    },
+    {
+      "key": "ship:little-sailboat",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04273,
+      "usage": {
+        "input_tokens": 98,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 98
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1154
+      },
+      "at": "2026-10-05T05:02:27+00:00"
+    },
+    {
+      "key": "ship:fishing-boat",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04274,
+      "usage": {
+        "input_tokens": 100,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 100
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1156
+      },
+      "at": "2026-10-05T05:02:44+00:00"
+    },
+    {
+      "key": "ship:tugboat",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04276,
+      "usage": {
+        "input_tokens": 103,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 103
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1159
+      },
+      "at": "2026-10-05T05:03:01+00:00"
+    },
+    {
+      "key": "ship:schooner",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04274,
+      "usage": {
+        "input_tokens": 100,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 100
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1156
+      },
+      "at": "2026-10-05T05:03:17+00:00"
+    },
+    {
+      "key": "ship:submarine",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04274,
+      "usage": {
+        "input_tokens": 99,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 99
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1155
+      },
+      "at": "2026-10-05T05:03:33+00:00"
+    },
+    {
+      "key": "ship:brigantine",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04276,
+      "usage": {
+        "input_tokens": 104,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 104
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1160
+      },
+      "at": "2026-10-05T05:03:47+00:00"
+    },
+    {
+      "key": "ship:galleon",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04277,
+      "usage": {
+        "input_tokens": 106,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 106
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1162
+      },
+      "at": "2026-10-05T05:04:04+00:00"
+    },
+    {
+      "key": "ship:royal-flagship",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04279,
+      "usage": {
+        "input_tokens": 110,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 110
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1166
+      },
+      "at": "2026-10-05T05:04:19+00:00"
+    },
+    {
+      "key": "ship:golden-legend",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04276,
+      "usage": {
+        "input_tokens": 105,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 105
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1161
+      },
+      "at": "2026-10-05T05:04:35+00:00"
+    },
+    {
+      "key": "island:letter-pop",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04264,
+      "usage": {
+        "input_tokens": 80,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 80
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1136
+      },
+      "at": "2026-10-05T05:04:50+00:00"
+    },
+    {
+      "key": "island:sound-hunt",
+      "model": "gpt-image-1",
+      "quality": "medium",
+      "usd": 0.04265,
+      "usage": {
+        "input_tokens": 83,
+        "input_tokens_details": {
+          "image_tokens": 0,
+          "text_tokens": 83
+        },
+        "output_tokens": 1056,
+        "output_tokens_details": {
+          "image_tokens": 1056,
+          "text_tokens": 0
+        },
+        "total_tokens": 1139
+      },
+      "at": "2026-10-05T05:05:06+00:00"
     }
   ]
 }

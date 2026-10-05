@@ -100,6 +100,14 @@
     if (!Array.isArray(d.badges)) d.badges = [];
     if (!d.kv || typeof d.kv !== 'object' || Array.isArray(d.kv)) d.kv = {};
     if (!d.daily || typeof d.daily !== 'object' || Array.isArray(d.daily)) d.daily = {};
+    // v5 fields: fleet, flagship, harbor buildings, crew. Old saves own the Little Sailboat as flagship; purchases and coins are untouched.
+    if (!Array.isArray(d.ships)) d.ships = [];
+    if (d.ships.indexOf('sailboat') < 0) d.ships.unshift('sailboat');
+    if (typeof d.flagship !== 'string' || d.ships.indexOf(d.flagship) < 0) d.flagship = 'sailboat';
+    if (!Array.isArray(d.buildings)) d.buildings = [];
+    if (!Array.isArray(d.crew)) d.crew = [];
+    d.owned.forEach(function (id) { if (/^pet-/.test(id) && d.crew.indexOf(id) < 0) d.crew.push(id); });
+    if (typeof d.rankSeen !== 'number') d.rankSeen = -1;
     if (typeof d.placed !== 'boolean') {
       // a profile that already has progress is not forced through the check-in (grown-ups can re-run it)
       var hasProgress = d.stars > 0 || Object.keys(d.skills).length > 0 || d.lifetime > 0;
@@ -300,15 +308,25 @@
   };
 
   /* ---------------- coins & rank ---------------- */
+  // 11 ranks by LIFETIME coins (spending never lowers rank; the old thresholds 0/50/150/350/700 keep their names, so nobody is demoted)
   var RANKS = [
-    { min: 0, name: 'Deckhand', emoji: '🧽' }, { min: 50, name: 'Sailor', emoji: '⚓' },
-    { min: 150, name: 'First Mate', emoji: '🧭' }, { min: 350, name: 'Captain', emoji: '🏴‍☠️' },
-    { min: 700, name: 'Admiral', emoji: '👑' }
+    { min: 0,    name: 'Deckhand',          emoji: '🧽' }, { min: 50,   name: 'Sailor',        emoji: '⚓' },
+    { min: 100,  name: 'Bosun',             emoji: '📯' }, { min: 150,  name: 'First Mate',    emoji: '🧭' },
+    { min: 250,  name: 'Navigator',         emoji: '🗺️' }, { min: 350,  name: 'Captain',       emoji: '🏴‍☠️' },
+    { min: 500,  name: 'Commodore',         emoji: '🎖️' }, { min: 700,  name: 'Admiral',       emoji: '👑' },
+    { min: 1000, name: 'Fleet Admiral',     emoji: '⭐' }, { min: 1400, name: 'Grand Admiral', emoji: '🌟' },
+    { min: 2000, name: 'Legend of the Seas', emoji: '🏆' }
   ];
+  RG.RANKS = RANKS.map(function (r) { return { min: r.min, name: r.name, emoji: r.emoji }; });
   function rankIndex(life) { var r = 0; for (var i = 0; i < RANKS.length; i++) if (life >= RANKS[i].min) r = i; return r; }
+  RG.rankIndexFor = rankIndex;
+  RG.rankName = function (i) { return RANKS[Math.max(0, Math.min(RANKS.length - 1, i))].name; };
   RG.rank = function (profileId) {
     var d = pdata(profileId || RG.profile().id), i = rankIndex(d.lifetime), r = RANKS[i], n = RANKS[i + 1];
-    return { name: r.name, emoji: r.emoji, next: n ? n.name : null, coinsToNext: n ? n.min - d.lifetime : 0 };
+    var span = n ? n.min - r.min : 1;
+    return { index: i, name: r.name, emoji: r.emoji, next: n ? n.name : null, nextEmoji: n ? n.emoji : null,
+      coinsToNext: n ? n.min - d.lifetime : 0, lifetime: d.lifetime, count: RANKS.length,
+      progress: n ? Math.max(0, Math.min(1, (d.lifetime - r.min) / span)) : 1 };
   };
   function updateCounters() {
     var b = RG.coins.balance();
@@ -352,8 +370,8 @@
       var after = rankIndex(d.lifetime);
       // never interrupt a game in progress: hold the celebration until the stage is gone
       if (after > before) {
-        if (document.querySelector('.game-stage')) RG._pendingRank = after;
-        else setTimeout(function () { RG.rankUp(after); }, 1400);
+        if (document.querySelector('.game-stage')) { if (RG._pendingRank == null) RG._pendingFrom = before; RG._pendingRank = after; }
+        else setTimeout(function () { RG.rankUp(after, before); }, 1400);
       }
       void reason;
     },
@@ -364,25 +382,45 @@
     refresh: updateCounters
   };
   RG.flushRankUp = function (delay) {
-    var idx = RG._pendingRank; if (idx == null) return;
-    RG._pendingRank = null;
+    var idx = RG._pendingRank, from = RG._pendingFrom; if (idx == null) return;
+    RG._pendingRank = null; RG._pendingFrom = null;
     setTimeout(function () {
-      if (document.querySelector('.game-stage')) { RG._pendingRank = idx; return; } // a game started meanwhile: wait again
-      RG.rankUp(idx);
+      if (document.querySelector('.game-stage')) { RG._pendingRank = idx; RG._pendingFrom = from; return; } // a game started meanwhile: wait again
+      RG.rankUp(idx, from);
     }, delay || 1400);
   };
-  RG.rankUp = function (idx) {
-    var r = RANKS[idx];
-    var overlay = RG.el('div', { class: 'rankup', role: 'dialog' },
+  // what newly opened at ranks (from, to]: ships, buildings and crew, by name
+  RG.unlocksFor = function (to, from) {
+    var out = [], lo = (from == null ? to - 1 : from) + 1, i;
+    for (i = lo; i <= to; i++) {
+      RG.ships.list.forEach(function (x) { if (x.rank === i && x.price > 0) out.push({ kind: 'ship', id: x.id, name: x.name, rank: i }); });
+      RG.buildings.list.forEach(function (x) { if (x.rank === i) out.push({ kind: 'building', id: x.id, name: x.name, rank: i }); });
+      RG.shop.items.forEach(function (x) { if (x.rank === i) out.push({ kind: 'crew', id: x.id, name: x.name, rank: i }); });
+    }
+    return out;
+  };
+  RG.rankUp = function (idx, from) {
+    var r = RANKS[idx], un = RG.unlocksFor(idx, from == null ? idx - 1 : from);
+    var A = RG.art, badgeSvg = '';
+    try { if (A && A.has && A.has('badge', idx)) badgeSvg = A.badge(idx); } catch (e) { badgeSvg = ''; }
+    var shopNames = un.filter(function (u) { return u.kind === 'ship' || u.kind === 'crew'; });
+    var hbNames = un.filter(function (u) { return u.kind === 'building'; });
+    function list(a) { return a.map(function (u) { return 'the ' + u.name; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
+    var lines = [];
+    if (shopNames.length) lines.push('New in the shop: ' + list(shopNames) + '!');
+    if (hbNames.length) lines.push('New in the harbor: ' + list(hbNames) + '!');
+    var unl = RG.el('div', { class: 'rankup-unlocks' }, lines.map(function (t) { return RG.el('div', { class: 'rankup-unlock', text: t }); }));
+    var overlay = RG.el('div', { class: 'rankup', role: 'dialog', 'aria-label': 'Rank up' },
       RG.el('div', { class: 'rankup-card' },
-        RG.el('div', { class: 'rankup-emoji', text: r.emoji }),
+        badgeSvg ? RG.el('div', { class: 'rankup-badge', html: badgeSvg }) : RG.el('div', { class: 'rankup-emoji', text: r.emoji }),
         RG.el('div', { class: 'rankup-title', text: 'Rank up!' }),
-        RG.el('div', { class: 'rankup-text', text: "You're now a " + r.name + '!' }),
+        RG.el('div', { class: 'rankup-text', text: "You're now " + (/^[AEIOU]/.test(r.name) ? 'an ' : 'a ') + r.name + '!' }),
+        lines.length ? unl : null,
         RG.el('button', { class: 'btn primary', text: 'Hooray!', on: { click: function () { overlay.remove(); } } })));
     document.body.appendChild(overlay);
-    RG.sfx.win(); RG.celebrate(overlay.querySelector('.rankup-emoji'));
-    RG.speak("Hooray! You're now a " + r.name + '!');
-    setTimeout(function () { if (overlay.parentNode) overlay.remove(); }, 6000);
+    RG.sfx.win(); RG.celebrate(overlay.querySelector('.rankup-badge, .rankup-emoji'));
+    RG.speak("Hooray! You're now " + (/^[AEIOU]/.test(r.name) ? 'an ' : 'a ') + r.name + '!' + (lines.length ? ' ' + lines.join(' ') : ''));
+    setTimeout(function () { if (overlay.parentNode) overlay.remove(); }, lines.length ? 9000 : 6000);
   };
 
   /* ---------------- quiz log & superpowers ---------------- */
@@ -413,7 +451,7 @@
     { e: '🐌', n: 'Snail' }, { e: '🦋', n: 'Butterfly' }, { e: '🌴', n: 'Palm tree' }, { e: '💎', n: 'Gem' }
   ];
 
-  /* ---------------- shop ---------------- */
+  /* ---------------- shop: cosmetics, crew, ships, harbor buildings ---------------- */
   RG.shop = {
     items: [
       { id: 'hull-red',    cat: 'hull', name: 'Red Hull',      price: 20,  color: '#e5484d' },
@@ -425,7 +463,10 @@
       { id: 'flag-heart',  cat: 'flag', name: 'Heart Flag',    price: 25,  emoji: '❤️' },
       { id: 'flag-pirate', cat: 'flag', name: 'Pirate Flag',   price: 40,  emoji: '🏴‍☠️' },
       { id: 'pet-parrot',  cat: 'pet',  name: 'Parrot',        price: 120, emoji: '🦜' },
-      { id: 'pet-cat',     cat: 'pet',  name: 'Ship Cat',      price: 100, emoji: '🐱' },
+      { id: 'pet-cat',     cat: 'pet',  name: 'Ship Cat',      price: 30,  emoji: '🐱', rank: 1 },
+      { id: 'pet-dog',     cat: 'pet',  name: 'Ship Dog',      price: 50,  emoji: '🐶' },
+      { id: 'pet-monkey',  cat: 'pet',  name: 'Monkey',        price: 80,  emoji: '🐵' },
+      { id: 'pet-octopus', cat: 'pet',  name: 'Octopus Mate',  price: 150, emoji: '🐙' },
       { id: 'pet-dolphin', cat: 'pet',  name: 'Dolphin Friend', price: 200, emoji: '🐬' },
       { id: 'hat-cap',     cat: 'hat',  name: 'Sailor Cap',    price: 30,  emoji: '🧢' },
       { id: 'hat-top',     cat: 'hat',  name: 'Top Hat',       price: 60,  emoji: '🎩' },
@@ -434,16 +475,100 @@
     get: function (id) { for (var i = 0; i < this.items.length; i++) if (this.items[i].id === id) return this.items[i]; return null; },
     owned: function (id) { return cur().owned.indexOf(id) >= 0; },
     equipped: function (profileId) { return pdata(profileId || RG.profile().id).equipped; },
+    /* rank needed (index) or 0 */
+    needRank: function (id) { var it = this.get(id); return it && it.rank ? it.rank : 0; },
+    locked: function (id) { var it = this.get(id); return !!(it && it.rank && cur().lifetime < RANKS[it.rank].min && !this.owned(id)); },
     buy: function (id) {
       var it = this.get(id), d = cur(); if (!it) return false;
       if (d.owned.indexOf(id) >= 0) return true;
+      if (this.locked(id)) return false;
       if (!RG.coins.spend(it.price)) return false;
-      d.owned.push(id); d.equipped[it.cat] = id; save(); return true;
+      d.owned.push(id); d.equipped[it.cat] = id;
+      if (it.cat === 'pet' && d.crew.indexOf(id) < 0) d.crew.push(id);
+      save(); return true;
     },
     toggle: function (id) {
       var it = this.get(id), d = cur(); if (!it || d.owned.indexOf(id) < 0) return;
       if (d.equipped[it.cat] === id) delete d.equipped[it.cat]; else d.equipped[it.cat] = id;
       save();
+    }
+  };
+
+  /* Ships: every ship bought joins the fleet; one is the flagship. Each needs its unlock rank AND the coins (rank never drops when spending). */
+  RG.ships = {
+    list: [
+      { id: 'sailboat',   name: 'Little Sailboat', price: 0,    rank: 0,  masts: 1 },
+      { id: 'fishing',    name: 'Fishing Boat',    price: 60,   rank: 1,  masts: 1 },
+      { id: 'sloop',      name: 'Sloop',           price: 120,  rank: 2,  masts: 1 },
+      { id: 'tugboat',    name: 'Tugboat',         price: 150,  rank: 3,  masts: 0 },
+      { id: 'schooner',   name: 'Schooner',        price: 250,  rank: 4,  masts: 2 },
+      { id: 'submarine',  name: 'Submarine',       price: 300,  rank: 5,  masts: 0 },
+      { id: 'brigantine', name: 'Brigantine',      price: 400,  rank: 5,  masts: 2 },
+      { id: 'galleon',    name: 'Galleon',         price: 650,  rank: 6,  masts: 3 },
+      { id: 'royal',      name: 'Royal Flagship',  price: 900,  rank: 7,  masts: 3 },
+      { id: 'legend',     name: 'Golden Legend',   price: 1500, rank: 10, masts: 3 }
+    ],
+    get: function (id) { for (var i = 0; i < this.list.length; i++) if (this.list[i].id === id) return this.list[i]; return null; },
+    owned: function (id, profileId) { return pdata(profileId || RG.profile().id).ships.indexOf(id) >= 0; },
+    /* owned ships in list order (cheapest first) */
+    fleet: function (profileId) {
+      var d = pdata(profileId || RG.profile().id);
+      return this.list.filter(function (x) { return d.ships.indexOf(x.id) >= 0; });
+    },
+    flagship: function (profileId) { var d = pdata(profileId || RG.profile().id); return this.get(d.flagship) || this.list[0]; },
+    setFlagship: function (id) {
+      var d = cur(); if (d.ships.indexOf(id) < 0) return false;
+      d.flagship = id; save(); return true;
+    },
+    unlockRank: function (id) { var x = this.get(id); return x ? x.rank : 0; },
+    /* -> {ok, reason:'owned'|'rank'|'coins'|'unknown'} ; spending never changes lifetime, so rank stays */
+    canBuy: function (id) {
+      var x = this.get(id), d = cur();
+      if (!x) return { ok: false, reason: 'unknown' };
+      if (d.ships.indexOf(id) >= 0) return { ok: false, reason: 'owned' };
+      if (rankIndex(d.lifetime) < x.rank) return { ok: false, reason: 'rank' };
+      if (d.coins < x.price) return { ok: false, reason: 'coins' };
+      return { ok: true };
+    },
+    buy: function (id) {
+      var c = this.canBuy(id); if (!c.ok) return c;
+      var x = this.get(id), d = cur();
+      if (!RG.coins.spend(x.price)) return { ok: false, reason: 'coins' };
+      d.ships.push(id); d.flagship = id; save();
+      return { ok: true };
+    }
+  };
+
+  /* Harbor buildings (Home Harbor / Captain's Cove plots, in plot order) */
+  RG.buildings = {
+    list: [
+      { id: 'dock',        name: 'Dock',           price: 40,   rank: 0, blurb: 'A pier for your boats.' },
+      { id: 'lighthouse',  name: 'Lighthouse',     price: 120,  rank: 2, blurb: 'Its light guides ships home.' },
+      { id: 'fish-market', name: 'Fish Market',    price: 180,  rank: 3, blurb: 'Fresh fish every day!' },
+      { id: 'library',     name: 'Library',        price: 300,  rank: 4, blurb: 'Your finished stories live here.' },
+      { id: 'shipyard',    name: 'Shipyard',       price: 350,  rank: 5, blurb: 'Where ships are built.' },
+      { id: 'vault',       name: 'Treasure Vault', price: 450,  rank: 6, blurb: 'Your sticker book is kept here.' },
+      { id: 'map-room',    name: 'Map Room',       price: 600,  rank: 7, blurb: 'Your Reading Superpowers scroll.' },
+      { id: 'sea-fort',    name: 'Sea Fort',       price: 900,  rank: 8, blurb: 'Guards the whole cove.' },
+      { id: 'statue',      name: 'Golden Statue',  price: 1300, rank: 9, blurb: 'A golden statue of you!' }
+    ],
+    get: function (id) { for (var i = 0; i < this.list.length; i++) if (this.list[i].id === id) return this.list[i]; return null; },
+    owned: function (id, profileId) { return pdata(profileId || RG.profile().id).buildings.indexOf(id) >= 0; },
+    mine: function (profileId) { var d = pdata(profileId || RG.profile().id); return this.list.filter(function (x) { return d.buildings.indexOf(x.id) >= 0; }); },
+    canBuy: function (id) {
+      var x = this.get(id), d = cur();
+      if (!x) return { ok: false, reason: 'unknown' };
+      if (d.buildings.indexOf(id) >= 0) return { ok: false, reason: 'owned' };
+      if (rankIndex(d.lifetime) < x.rank) return { ok: false, reason: 'rank' };
+      if (d.coins < x.price) return { ok: false, reason: 'coins' };
+      return { ok: true };
+    },
+    buy: function (id) {
+      var c = this.canBuy(id); if (!c.ok) return c;
+      var x = this.get(id), d = cur();
+      if (!RG.coins.spend(x.price)) return { ok: false, reason: 'coins' };
+      d.buildings.push(id); save();
+      return { ok: true };
     }
   };
 

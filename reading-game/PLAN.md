@@ -407,3 +407,77 @@ RG.progress.get(key) / RG.progress.set(key, value) // small per-profile key/valu
 ```
 - `ctx.level` can be 1..5. Big-track skills: `phonics`, `blends`, `long-words`, `sight-words`, `comprehension`, `fluency`, `real-world`, `quiz` (max 5); `rhyme` (max 4 on big).
 - Games call `RG.progress.tricky.add(word, skill)` on a wrong answer about a specific word, and `.correct(word)` when a tricky word is answered right. Games that pick target words mix in 1–2 tricky words from their own skill when available.
+
+---
+
+# ADDENDUM v5: Custom art, the long promotion journey, ships, fleet and Home Harbor (BINDING)
+
+## 0. Bug: the map boat floats above the water when the window is resized
+Cause: the horizon comes from `body`'s `background-attachment: fixed` gradient (sky to 30% of the viewport, sea from 31%), while `.map-boat` sits in the scrolling map content at a fixed pixel size. The two drift apart at any viewport size or scroll position.
+Fix: the top of the map becomes a self-contained **harbor scene** (`.map-scene`) that draws its own sky, sun and clouds, plus a sea band with animated waves. The flagship (and up to 2 fleet ships following behind) is positioned with `bottom:` inside the sea band, so its hull always sits in the water at every size. The scene's height is `clamp(170px, 30vh, 280px)`. Below the scene the map is plain sea. No screen may depend on a fixed-viewport horizon; check every screen that shows a boat (start, map, shop preview, treasure, harbor).
+
+## 1. Art system: `js/art.js` (loaded after core.js, before games)
+Hand-made **inline SVG** art in one consistent style: flat fills, 3px dark-navy (#14365a) rounded outlines, one soft highlight per shape, a bright palette that matches style.css, and no text inside the art. Every function returns an SVG string sized by its viewBox. Callers set the width and height.
+```js
+RG.art.ship(id, {sail, hull, flag, pet})   // ids below; existing sail/hull/flag/pet cosmetics still apply
+RG.art.island(gameId)                       // one island per game (sand + palm + a landmark: balloon, magnifier,
+                                            // pencil, little boat, brick tower, cannon, saw+log, fishing rod,
+                                            // picture frame, open book, treasure map, trophy fort)
+RG.art.building(id)                         // harbor buildings below
+RG.art.badge(rankIndex)                     // 11 rank badges, increasingly grand (rope ring → gold crown medal)
+RG.art.chest(open:boolean), RG.art.coin(), RG.art.scene()  // scene = optional decorative clouds/sun/seagulls
+RG.art.has(kind, id) -> boolean
+```
+- **Raster override, so AI art can drop in later:** if `window.RG_IMAGES` (from an optional `img/manifest.js`) maps `'ship:galleon'` etc. to a file path, every `RG.art.*` returns `<img src=… alt="">` instead of the SVG. Nothing else changes.
+- **`tools/generate-art.py`** (not run now; no key or network here): uses only the standard library and calls the OpenAI Images API. It reads `OPENAI_API_KEY`, takes the model name from `--model` (default `gpt-image-1`), and requests transparent backgrounds with one shared style prompt. Its prompt list mirrors every art id. It converts the output to small webp with ImageMagick `convert` and writes `img/manifest.js`. It has a **hard budget cap**: `--budget` defaults to 8.00 and is refused above 10.00. It estimates cost before each call from a per-image price table (overridable via flags) and stops before exceeding the cap. `--dry-run` prints the plan and the estimate. Re-runs skip images that already exist. It logs the actual spend to `img/spend.json`.
+
+## 2. The promotion journey: 11 ranks by lifetime coins (thresholds keep the old names in place, so no one is ever demoted)
+| # | Rank | Lifetime coins | Unlocks |
+|---|---|---|---|
+| 1 | Deckhand | 0 | Little Sailboat, Dock |
+| 2 | Sailor | 50 | Fishing Boat, Ship Cat |
+| 3 | Bosun | 100 | Sloop, Lighthouse |
+| 4 | First Mate | 150 | Tugboat, Fish Market |
+| 5 | Navigator | 250 | Schooner, Library |
+| 6 | Captain | 350 | Brigantine, Submarine, Shipyard |
+| 7 | Commodore | 500 | Galleon, Treasure Vault |
+| 8 | Admiral | 700 | Royal Flagship, Map Room |
+| 9 | Fleet Admiral | 1000 | Sea Fort |
+| 10 | Grand Admiral | 1400 | Golden Statue (of the player's avatar) |
+| 11 | Legend of the Seas | 2000 | Golden Legend ship |
+- A rank-up celebration shows the new badge **and what just unlocked** ("New in the shop: the Sloop!").
+- The map header shows the rank badge plus a thin progress bar to the next rank, with "120 more coins to Captain!". This compares the child only to themselves.
+
+## 3. Ships and the fleet
+- Ship prices: Little Sailboat (owned at start), Fishing Boat 60, Sloop 120, Tugboat 150, Schooner 250, Submarine 300, Brigantine 400, Galleon 650, Royal Flagship 900, Golden Legend 1500. Each needs its unlock rank AND enough coins.
+- Every ship bought joins the **fleet**. The child picks one owned ship as the **flagship** (shown on the map and in the start-screen hero). Up to 2 other fleet ships sail behind it in the map scene, smaller.
+- Existing cosmetics (sail color, hull, flag, pet) apply to the flagship.
+- Ships are drawn bigger or grander as they go up: a sloop has 1 mast, a schooner 2, a brigantine 2 square-rigged, a galleon 3 masts with a castle stern, the royal flagship has gold trim, and the submarine is a cute yellow submarine.
+
+## 4. Home Harbor 🏝️ ("Captain's Cove"), a new screen from the map toolbar
+- A wide illustrated cove where bought buildings appear in fixed plots, and fleet ships are moored at the dock. It scrolls horizontally if needed; the page body must never scroll sideways.
+- Buildings and prices: Dock 40, Lighthouse 120, Fish Market 180, Library 300, Shipyard 350, Treasure Vault 450, Map Room 600, Sea Fort 900, Golden Statue 1300.
+- Buildings that hold the child's own collections, so reading progress has a home:
+  - **Library:** shelves showing every story and chapter he has finished, by title. Tapping a book reads its title aloud and offers "Read it again" (launches story-cove). This is the "why read" payoff.
+  - **Treasure Vault:** opens the sticker book.
+  - **Map Room:** opens the Reading Superpowers scroll.
+  - The others are decorative with a small tap animation and sound (lighthouse beam, market fish jump, fort flag).
+- Empty plots show a faint outline with "Unlocks at <Rank>" or a price, so the child always sees what's next.
+
+## 5. Shop redesign
+- Tabs: ⛵ Ships · 🏠 Harbor · 🦜 Crew & Decor (the existing 14 cosmetics plus new crew: Ship Cat 30, Parrot (existing), Ship Dog 50, Monkey 80, Octopus Mate 150).
+- Each card shows the art, price, and an owned, equip or locked state. Locked cards show the rank badge and "Unlocks at Captain".
+- **Purchase confirmation inside the page** (a big "Buy the Galleon for 650 🪙?" with ✅ Yes / ❌ No). A 4-year-old must not buy by accident, and `confirm()` does not work in the artifact frame.
+- Spending never lowers rank, because rank is based on lifetime coins.
+- Everything is per profile. The profile picker still shows no comparisons between siblings.
+
+## 6. Data and migration
+`rg_v2` per-profile data gains `ships[]`, `flagship`, `buildings[]` and `crew[]`. Old saves default to owning the Little Sailboat with it as flagship. Old shop purchases stay owned and equipped. Existing coins and lifetime coins are untouched.
+
+## 7. Build split (parallel)
+| Agent | Files |
+|---|---|
+| ART-5 | js/art.js (new), tools/generate-art.py (new), index.html (one script tag for js/art.js after core.js, plus an optional `<script src="img/manifest.js">` that must fail silently) |
+| PROG-5 | js/core.js, js/app.js, css/style.css (ranks, ships, fleet, harbor, shop, map scene fix, island art on the map, treasure chest art) |
+
+PROG-5 codes against the `RG.art` API above and falls back to the current emoji/SVG if `RG.art` or an id is missing.

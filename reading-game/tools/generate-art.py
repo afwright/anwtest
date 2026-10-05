@@ -18,10 +18,13 @@ What it does
   * --dry-run prints the plan and the estimate and makes no API call and needs no key.
 
 Usage
-  export OPENAI_API_KEY=...            # never printed by this script
+  export OPENAI_API_KEY=...            # optional; never printed by this script
   python3 tools/generate-art.py --dry-run
   python3 tools/generate-art.py --only ship:galleon,coin --max-images 2
   python3 tools/generate-art.py --budget 8 --quality medium
+
+The API key is optional: the Authorization header is only sent when OPENAI_API_KEY is set
+(a proxy may inject the credential). Output: img/<kind>/<id>.webp, ships padded so the hull bottom is at 92%.
 
 Standard library only (+ ImageMagick `convert` for the webp step).
 """
@@ -44,27 +47,29 @@ MAX_BUDGET = 10.00
 DEFAULT_BUDGET = 8.00
 
 # Estimated USD per 1024x1024 image by quality. CHECK AGAINST OPENAI'S CURRENT PRICING PAGE.
-PRICE_TABLE = {'low': 0.011, 'medium': 0.042, 'high': 0.167}
+PRICE_TABLE = {'low': 0.011, 'medium': 0.043, 'high': 0.167}
+# Actual cost is computed from the response `usage` with these per-million-token rates (also check them).
+TOKEN_USD_PER_M = {'image_output': 40.0, 'text_input': 5.0}
 SIZE = '1024x1024'
-OUT_PX = 512          # output webp is resized to fit this many pixels
 WEBP_QUALITY = 82
+SHIP_BOTTOM = 0.92    # ships: bottom of the hull sits at 92% of the canvas height (raster waterline 0.88)
+SHIP_WATERLINE = 0.88
+OUT_PX = {'ship': 384, 'island': 384, 'building': 384, 'badge': 192, 'coin': 192, 'chest': 192, 'scene': 384}
 
 STYLE = (
-    "Children's picture-book game illustration, flat vector style with thick rounded dark navy (#14365a) outlines, "
-    "bright friendly saturated colors (sky blue, sea blue, sand yellow, grass green, coral red, sunny gold), "
-    "one soft white highlight per shape, simple shapes, cute and charming for a 4 to 8 year old, "
-    "single centered object filling most of the frame, transparent background, no text, no letters, no numbers, "
-    "no watermark, no frame, no shadow on the ground."
+    "Cute flat vector illustration for a children's reading game app, bold rounded dark navy outlines, "
+    "soft cel shading with one highlight, bright cheerful saturated colors, sticker style, centered, "
+    "full object visible, transparent background, no text, no letters, no watermark."
 )
 
-SHIP_SIDE = "side view facing right, whole ship visible, hull low in the water. "
+SHIP_SIDE = "side view facing right, whole ship visible, no water, no waves, nothing below the hull. "
 PROMPTS = {
     'ship:little-sailboat': SHIP_SIDE + "A tiny wooden sailboat with one white mast sail, a small jib, and a red pennant flag.",
     'ship:fishing-boat': SHIP_SIDE + "A cheerful red and white fishing boat with a small cabin, an orange roof, a net and a lifebuoy.",
     'ship:sloop': SHIP_SIDE + "A sloop with one tall mast, a big white mainsail and a jib, wooden hull with a gold stripe and portholes.",
     'ship:tugboat': SHIP_SIDE + "A chubby red tugboat with a white cabin, a black funnel puffing smoke, tire fenders and a lifebuoy.",
     'ship:schooner': SHIP_SIDE + "A teal schooner with two masts, gaff sails and a jib, gold stripe, round portholes.",
-    'ship:submarine': "side view facing right. A cute round yellow submarine with a periscope, a conning tower, three round portholes and a little propeller, half in the water.",
+    'ship:submarine': "side view facing right, no water, no waves, nothing below the hull. A cute round yellow submarine with a periscope, a conning tower, three round portholes and a little propeller.",
     'ship:brigantine': SHIP_SIDE + "A dark wooden brigantine with two masts, square sails on the front mast, a jib, gold trim and portholes.",
     'ship:galleon': SHIP_SIDE + "A grand wooden galleon with three masts, cream square sails, a tall castle stern, cannon portholes, gold trim, flags.",
     'ship:royal-flagship': SHIP_SIDE + "A royal flagship: a white and gold galleon with three masts, white sails with blue star crests, gold crown on the top mast, many flags.",
@@ -129,7 +134,19 @@ def load_prices(args):
 
 
 def filename(key):
-    return key.replace(':', '-') + '.webp'
+    kind, _, ident = key.partition(':')
+    return kind + '/' + ident + '.webp' if ident else kind + '.webp'
+
+
+def kind_of(key):
+    return key.partition(':')[0]
+
+
+def manifest_entry(key):
+    e = {'src': 'img/' + filename(key)}
+    if kind_of(key) == 'ship':
+        e['waterline'] = SHIP_WATERLINE
+    return e
 
 
 def read_json(path, default):
@@ -157,22 +174,45 @@ def generate_one(key, args, api_key):
         'background': 'transparent',
         'output_format': 'png',
     }
-    req = urllib.request.Request(
-        API_URL, data=json.dumps(payload).encode('utf-8'),
-        headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + api_key})
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    headers = {'Content-Type': 'application/json'}
+    if api_key:
+        headers['Authorization'] = 'Bearer ' + api_key
+    req = urllib.request.Request(API_URL, data=json.dumps(payload).encode('utf-8'), headers=headers)
+    with urllib.request.urlopen(req, timeout=240) as resp:
         data = json.loads(resp.read().decode('utf-8'))
-    return base64.b64decode(data['data'][0]['b64_json'])
+    return base64.b64decode(data['data'][0]['b64_json']), data.get('usage')
 
 
-def to_webp(png_bytes, out_path):
+def usage_cost(usage, fallback):
+    """USD from the response usage (image output tokens + text input tokens), else the estimate."""
+    try:
+        out_t = usage['output_tokens']
+        in_t = (usage.get('input_tokens_details') or {}).get('text_tokens', usage.get('input_tokens', 0))
+        return round(out_t * TOKEN_USD_PER_M['image_output'] / 1e6 + in_t * TOKEN_USD_PER_M['text_input'] / 1e6, 5)
+    except Exception:
+        return fallback
+
+
+def to_webp(png_bytes, out_path, kind):
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
     tmp = out_path + '.tmp.png'
     with open(tmp, 'wb') as f:
         f.write(png_bytes)
+    px = OUT_PX.get(kind, 384)
     try:
-        subprocess.run(['convert', tmp, '-trim', '+repage', '-resize', '%dx%d>' % (OUT_PX, OUT_PX),
-                        '-quality', str(WEBP_QUALITY), '-define', 'webp:alpha-quality=90', out_path],
-                       check=True, capture_output=True)
+        base = ['convert', tmp, '-background', 'none', '-trim', '+repage']
+        size = subprocess.run(base + ['-format', '%w %h', 'info:'], check=True, capture_output=True, text=True).stdout.split()
+        w, h = int(size[0]), int(size[1])
+        if kind == 'ship':
+            # square canvas, object bottom at 92% of the height, centered horizontally
+            side = max(w, int(round(h / SHIP_BOTTOM)))
+            bottom = int(round(side * (1 - SHIP_BOTTOM)))
+            cmd = base + ['-gravity', 'south', '-splice', '0x%d' % bottom, '-gravity', 'south', '-extent', '%dx%d' % (side, side)]
+        else:
+            side = int(round(max(w, h) * 1.04))
+            cmd = base + ['-gravity', 'center', '-extent', '%dx%d' % (side, side)]
+        cmd += ['-resize', '%dx%d' % (px, px), '-quality', str(WEBP_QUALITY), '-define', 'webp:alpha-quality=90', out_path]
+        subprocess.run(cmd, check=True, capture_output=True)
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
@@ -218,7 +258,7 @@ def main():
         path = os.path.join(IMG_DIR, filename(k))
         if os.path.exists(path) and not args.force:
             have.append(k)
-            manifest[k] = 'img/' + filename(k)
+            manifest[k] = manifest_entry(k)
         else:
             todo.append(k)
     if args.max_images:
@@ -238,9 +278,7 @@ def main():
         log('Dry run: nothing was called.')
         return
 
-    api_key = os.environ.get('OPENAI_API_KEY', '')
-    if not api_key:
-        sys.exit('OPENAI_API_KEY is not set.')
+    api_key = os.environ.get('OPENAI_API_KEY', '')  # may be empty when a proxy injects the credential
     if not shutil.which('convert'):
         sys.exit('ImageMagick `convert` was not found.')
 
@@ -250,32 +288,33 @@ def main():
             log('Stopping: the next image would exceed the $%.2f budget.' % args.budget)
             break
         try:
-            png = generate_one(k, args, api_key)
+            png, usage = generate_one(k, args, api_key)
         except urllib.error.HTTPError as e:
             detail = ''
             try:
                 detail = json.loads(e.read().decode('utf-8')).get('error', {}).get('message', '')
             except Exception:
                 pass
-            log('FAILED %s: HTTP %s %s' % (k, e.code, detail.replace(api_key, '***')))
+            log('FAILED %s: HTTP %s %s' % (k, e.code, detail.replace(api_key, '***') if api_key else detail))
             if e.code in (401, 403, 429):
                 break
             continue
         except Exception as e:  # network error etc.
-            log('FAILED %s: %s' % (k, str(e).replace(api_key, '***')))
+            log('FAILED %s: %s' % (k, str(e).replace(api_key, '***') if api_key else str(e)))
             continue
-        run_spent += price
-        spend['total_usd'] = round(spend.get('total_usd', 0.0) + price, 4)
-        spend['calls'].append({'key': k, 'model': args.model, 'quality': args.quality, 'usd': price,
+        cost = usage_cost(usage, price)
+        run_spent += cost
+        spend['total_usd'] = round(spend.get('total_usd', 0.0) + cost, 4)
+        spend['calls'].append({'key': k, 'model': args.model, 'quality': args.quality, 'usd': cost, 'usage': usage,
                                'at': datetime.now(timezone.utc).isoformat(timespec='seconds')})
         with open(spend_path, 'w') as f:
             json.dump(spend, f, indent=2)
         try:
-            to_webp(png, os.path.join(IMG_DIR, filename(k)))
+            to_webp(png, os.path.join(IMG_DIR, filename(k)), kind_of(k))
         except Exception as e:
             log('FAILED to convert %s: %s' % (k, e))
             continue
-        manifest[k] = 'img/' + filename(k)
+        manifest[k] = manifest_entry(k)
         write_manifest(manifest)  # keep the manifest current in case of an interruption
         log('ok  %-24s spent so far this run: $%.2f' % (k, run_spent))
 

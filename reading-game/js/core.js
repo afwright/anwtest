@@ -102,8 +102,8 @@
     if (!d.daily || typeof d.daily !== 'object' || Array.isArray(d.daily)) d.daily = {};
     // v5 fields: fleet, flagship, harbor buildings, crew. Old saves own the Little Sailboat as flagship; purchases and coins are untouched.
     if (!Array.isArray(d.ships)) d.ships = [];
-    if (d.ships.indexOf('sailboat') < 0) d.ships.unshift('sailboat');
-    if (typeof d.flagship !== 'string' || d.ships.indexOf(d.flagship) < 0) d.flagship = 'sailboat';
+    if (d.ships.indexOf('little-sailboat') < 0) d.ships.unshift('little-sailboat');
+    if (typeof d.flagship !== 'string' || d.ships.indexOf(d.flagship) < 0) d.flagship = 'little-sailboat';
     if (!Array.isArray(d.buildings)) d.buildings = [];
     if (!Array.isArray(d.crew)) d.crew = [];
     d.owned.forEach(function (id) { if (/^pet-/.test(id) && d.crew.indexOf(id) < 0) d.crew.push(id); });
@@ -497,16 +497,16 @@
   /* Ships: every ship bought joins the fleet; one is the flagship. Each needs its unlock rank AND the coins (rank never drops when spending). */
   RG.ships = {
     list: [
-      { id: 'sailboat',   name: 'Little Sailboat', price: 0,    rank: 0,  masts: 1 },
-      { id: 'fishing',    name: 'Fishing Boat',    price: 60,   rank: 1,  masts: 1 },
+      { id: 'little-sailboat',   name: 'Little Sailboat', price: 0,    rank: 0,  masts: 1 },
+      { id: 'fishing-boat',    name: 'Fishing Boat',    price: 60,   rank: 1,  masts: 1 },
       { id: 'sloop',      name: 'Sloop',           price: 120,  rank: 2,  masts: 1 },
       { id: 'tugboat',    name: 'Tugboat',         price: 150,  rank: 3,  masts: 0 },
       { id: 'schooner',   name: 'Schooner',        price: 250,  rank: 4,  masts: 2 },
       { id: 'submarine',  name: 'Submarine',       price: 300,  rank: 5,  masts: 0 },
       { id: 'brigantine', name: 'Brigantine',      price: 400,  rank: 5,  masts: 2 },
       { id: 'galleon',    name: 'Galleon',         price: 650,  rank: 6,  masts: 3 },
-      { id: 'royal',      name: 'Royal Flagship',  price: 900,  rank: 7,  masts: 3 },
-      { id: 'legend',     name: 'Golden Legend',   price: 1500, rank: 10, masts: 3 }
+      { id: 'royal-flagship',      name: 'Royal Flagship',  price: 900,  rank: 7,  masts: 3 },
+      { id: 'golden-legend',     name: 'Golden Legend',   price: 1500, rank: 10, masts: 3 }
     ],
     get: function (id) { for (var i = 0; i < this.list.length; i++) if (this.list[i].id === id) return this.list[i]; return null; },
     owned: function (id, profileId) { return pdata(profileId || RG.profile().id).ships.indexOf(id) >= 0; },
@@ -547,10 +547,10 @@
       { id: 'fish-market', name: 'Fish Market',    price: 180,  rank: 3, blurb: 'Fresh fish every day!' },
       { id: 'library',     name: 'Library',        price: 300,  rank: 4, blurb: 'Your finished stories live here.' },
       { id: 'shipyard',    name: 'Shipyard',       price: 350,  rank: 5, blurb: 'Where ships are built.' },
-      { id: 'vault',       name: 'Treasure Vault', price: 450,  rank: 6, blurb: 'Your sticker book is kept here.' },
+      { id: 'treasure-vault',       name: 'Treasure Vault', price: 450,  rank: 6, blurb: 'Your sticker book is kept here.' },
       { id: 'map-room',    name: 'Map Room',       price: 600,  rank: 7, blurb: 'Your Reading Superpowers scroll.' },
       { id: 'sea-fort',    name: 'Sea Fort',       price: 900,  rank: 8, blurb: 'Guards the whole cove.' },
-      { id: 'statue',      name: 'Golden Statue',  price: 1300, rank: 9, blurb: 'A golden statue of you!' }
+      { id: 'golden-statue',      name: 'Golden Statue',  price: 1300, rank: 9, blurb: 'A golden statue of you!' }
     ],
     get: function (id) { for (var i = 0; i < this.list.length; i++) if (this.list[i].id === id) return this.list[i]; return null; },
     owned: function (id, profileId) { return pdata(profileId || RG.profile().id).buildings.indexOf(id) >= 0; },

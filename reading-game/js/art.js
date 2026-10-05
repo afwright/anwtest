@@ -5,7 +5,7 @@
  *   RG.art.ship(id, {sail, hull, flag, pet, sailMark})
  *   RG.art.island(gameId)       RG.art.building(id, {avatar})   RG.art.badge(rankIndex 0..10)
  *   RG.art.chest(open)          RG.art.coin()                   RG.art.scene()
- *   RG.art.has(kind, id)        RG.art.WATERLINE                RG.art.ids (lists of every id)
+ *   RG.art.has(kind, id)        RG.art.waterline(kind, id)   RG.art.WATERLINE                RG.art.ids (lists of every id)
  *
  * SHIP WATERLINE: every ship viewBox is 240 x 200 and the hull waterline sits at y = 150,
  * so RG.art.WATERLINE = 0.75 (fraction of the height from the top). Hulls reach down to about
@@ -16,7 +16,7 @@
  * Ship opts use the same values as the shop cosmetics: sail = '#hex' or 'rainbow', hull = '#hex',
  * flag = an emoji (shop flag) or a '#hex' pennant colour, pet = an emoji, sailMark = an emoji on the main sail.
  *
- * Raster override: if window.RG_IMAGES (from the optional img/manifest.js) has a key such as
+ * Raster override: if window.RG_IMAGES (from the optional img/manifest.js; value is a path or {src, waterline}) has a key such as
  * 'ship:galleon', 'island:word-builder', 'building:library', 'badge:6', 'chest:open', 'chest:closed',
  * 'coin' or 'scene', the call returns <img src=... alt=""> instead of the SVG.
  *
@@ -450,9 +450,30 @@
   }
 
   /* ================================================================ public API */
+  // RG_IMAGES values are either a path string or {src, waterline}
   function raster(key) {
-    var m = window.RG_IMAGES;
-    return m && typeof m === 'object' && m[key] ? m[key] : null;
+    var m = window.RG_IMAGES, v = m && typeof m === 'object' ? m[key] : null;
+    if (!v) return null;
+    if (typeof v === 'string') return { src: v };
+    return v.src ? v : null;
+  }
+  // Raster ships: sail/hull recolor are NOT applied (the picture is fixed); the pet and an emoji flag are overlaid as
+  // absolutely positioned spans. The golden-statue raster gets opts.avatar overlaid the same way.
+  var cssDone = false;
+  function ensureCss() {
+    if (cssDone) return; cssDone = true;
+    try {
+      var st = document.createElement('style');
+      st.textContent = '.rg-art-wrap{position:relative;display:block;width:100%;height:100%;container-type:size}' +
+        '.rg-art-wrap>.rg-ov{position:absolute;line-height:1;font-size:15cqmin;transform:translate(-50%,-50%);pointer-events:none}';
+      document.head.appendChild(st);
+    } catch (e) {}
+  }
+  function ov(x, y, size, ch) { return '<span class="rg-ov" style="left:' + x + '%;top:' + y + '%;font-size:' + size + 'cqmin">' + ch + '</span>'; }
+  function overlay(r, spans) {
+    if (!spans) return img(r.src);
+    ensureCss();
+    return '<span class="rg-art-wrap">' + img(r.src) + spans + '</span>';
   }
   function known(kind, id) {
     if (kind === 'ship') return SHIPS.indexOf(id) >= 0;
@@ -469,32 +490,44 @@
     WATERLINE: WATERLINE_Y / SHIP_H,
     SHIP_VIEWBOX: [SHIP_W, SHIP_H],
     ids: { ship: SHIPS.slice(), island: ISLANDS.slice(), building: BUILDINGS.slice(), badge: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+    // waterline (fraction of height) for a ship: the raster's own value, or WATERLINE for the SVG art
+    waterline: function (kind, id) {
+      var r = kind === 'ship' ? raster('ship:' + id) : null;
+      return r && r.waterline ? r.waterline : WATERLINE_Y / SHIP_H;
+    },
     has: function (kind, id) { return known(kind, id) || !!raster(kind + ':' + id); },
     ship: function (id, opts) {
-      var r = raster('ship:' + id); if (r) return img(r);
+      var r = raster('ship:' + id);
+      if (r) {
+        var wl = (r.waterline || 0.88) * 100, op = opts || {}, sp = '';
+        if (op.pet) sp += op.pet === '\uD83D\uDC2C' ? ov(88, wl + 4, 16, op.pet) : ov(62, wl - 30, 14, op.pet);
+        if (op.flag && !isColor(op.flag)) sp += ov(54, 8, 10, op.flag);
+        return overlay(r, sp);
+      }
       if (SHIPS.indexOf(id) < 0) id = 'little-sailboat';
       return guard(function () { return shipSvg(id, opts || {}); });
     },
     island: function (id) {
-      var r = raster('island:' + id); if (r) return img(r);
+      var r = raster('island:' + id); if (r) return img(r.src);
       if (ISLANDS.indexOf(id) < 0) return '';
       return guard(function () { return islandSvg(id); });
     },
     building: function (id, opts) {
-      var r = raster('building:' + id); if (r) return img(r);
+      var r = raster('building:' + id);
+      if (r) return overlay(r, id === 'golden-statue' && opts && opts.avatar ? ov(50, 30, 22, opts.avatar) : '');
       if (BUILDINGS.indexOf(id) < 0) return '';
       return guard(function () { return buildingSvg(id, opts || {}); });
     },
     badge: function (n) {
       n = Math.max(0, Math.min(10, Math.floor(+n) || 0));
-      var r = raster('badge:' + n); if (r) return img(r);
+      var r = raster('badge:' + n); if (r) return img(r.src);
       return guard(function () { return badgeSvg(n); });
     },
     chest: function (open) {
-      var r = raster('chest:' + (open ? 'open' : 'closed')); if (r) return img(r);
+      var r = raster('chest:' + (open ? 'open' : 'closed')); if (r) return img(r.src);
       return guard(function () { return chestSvg(!!open); });
     },
-    coin: function () { var r = raster('coin'); return r ? img(r) : guard(coinSvg); },
-    scene: function () { var r = raster('scene'); return r ? img(r) : guard(sceneSvg); }
+    coin: function () { var r = raster('coin'); return r ? img(r.src) : guard(coinSvg); },
+    scene: function () { var r = raster('scene'); return r ? img(r.src) : guard(sceneSvg); }
   };
 })();

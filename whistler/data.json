@@ -1,0 +1,10 @@
+{
+ "updated": "1970-01-01T00:00:00Z",
+ "terrain_ok": false,
+ "snow_ok": false,
+ "errors": ["placeholder: no scrape has run yet"],
+ "snow": {"base_cm": null, "overnight_cm": null, "h24_cm": null, "h48_cm": null, "d7_cm": null, "season_cm": null, "report_time": null},
+ "lifts": [],
+ "runs": [],
+ "summary": {}
+}

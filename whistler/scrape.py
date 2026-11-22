@@ -266,6 +266,7 @@ class Collector:
         self.unknown_mountain = 0
         self.areas = []
         self.lift_raw = []
+        self.unknown_names = []
         self.seen_ids = {"lift": set(), "run": set()}
 
     def area_mountain(self, area):
@@ -311,12 +312,17 @@ class Collector:
                     break
         if mount is None:
             low = name.lower()
-            if "blackcomb" in low or "base 2" in low or "chateau" in low or "admin" in low:
+            # earliest explicit mention wins ("Blackcomb Base Whistler Kids Only" -> Blackcomb)
+            pos = [(low.find(k), v) for k, v in (("blackcomb", "Blackcomb"), ("whistler", "Whistler")) if k in low]
+            if pos:
+                mount = min(pos)[1]
+            elif any(k in low for k in ("base 2", "chateau", "admin")):
                 mount = "Blackcomb"
-            elif "whistler" in low or "creekside" in low or "olympic" in low or "clc" in low:
+            elif any(k in low for k in ("creekside", "olympic", "clc", "super carpet", "scamp", "fantastic")):
                 mount = "Whistler"
         if mount is None:
             self.unknown_mountain += 1
+            self.unknown_names.append((kind, name, ctx.get("area")))
         if kind == "lift":
             rec = {"name": name.strip(), "mountain": mount or "Unknown",
                    "status": str(sval) if sval is not None else "", "open": is_open_value(sval)}
@@ -556,11 +562,12 @@ def terrain_diag(col):
             nm, am, len(trails or []),
             [(l.get("Name"), l.get("Mountain")) for l in (lifts or []) if isinstance(l, dict)][:6],
             [t.get("Name") for t in (trails or [])[:3] if isinstance(t, dict)]))
+    print("items with unresolved mountain:", col.unknown_names)
     print("runs per mountain:", dict(Counter(r["mountain"] for r in col.runs)))
     print("lifts per mountain:", dict(Counter(r["mountain"] for r in col.lifts)))
-    for known, mt in (("Pony Trail", "Whistler"), ("Upper Olympic", "Whistler"), ("Green Line", "Blackcomb")):
-        hits = [(r["name"], r["mountain"], r["difficulty"], r["open"]) for r in col.runs if known.lower() in r["name"].lower()]
-        print("   known green check %s (expect %s green): %s" % (known, mt, hits))
+    for pat in ("pony trail", "olympic", "green ?line"):
+        hits = [(r["name"], r["mountain"], r["difficulty"], r["open"]) for r in col.runs if re.search(pat, r["name"], re.I)]
+        print("   known-run check /%s/ (Pony Trail, Upper Olympic: Whistler green; Green Line: Blackcomb green): %s" % (pat, hits))
 
 
 def summarize(lifts, runs):

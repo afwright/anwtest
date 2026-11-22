@@ -52,6 +52,16 @@ DIFFICULTY_MAP = {
     1: "green", 2: "blue", 3: "black", 4: "double", 5: "park",
 }
 
+# Grooming-area -> mountain (the feed gives runs no Mountain field; areas carry
+# no mountain either, so this is labelled by hand from the area names seen in CI logs).
+AREA_MOUNTAIN = {
+    "jersey cream": "Blackcomb", "crystal ridge": "Blackcomb", "7th heaven": "Blackcomb",
+    "glacier / showcase t-bar": "Blackcomb",
+    "emerald / garbanzo / village gondola - upper": "Whistler",
+    "big red / garbanzo / village gondola - upper": "Whistler",
+    "creekside": "Whistler", "harmony": "Whistler", "peak / t-bar": "Whistler", "symphony": "Whistler",
+}
+
 # Numeric / string mountain codes, if the feed uses ids. Fill from logs.
 MOUNTAIN_CODES = {}
 
@@ -255,6 +265,7 @@ class Collector:
         self.example_lifts, self.example_runs = [], []
         self.unknown_mountain = 0
         self.areas = []
+        self.lift_raw = []
         self.seen_ids = {"lift": set(), "run": set()}
 
     def area_mountain(self, area):
@@ -299,11 +310,18 @@ class Collector:
                     mount = mountain_from(v)
                     break
         if mount is None:
+            low = name.lower()
+            if "blackcomb" in low or "base 2" in low or "chateau" in low or "admin" in low:
+                mount = "Blackcomb"
+            elif "whistler" in low or "creekside" in low or "olympic" in low or "clc" in low:
+                mount = "Whistler"
+        if mount is None:
             self.unknown_mountain += 1
         if kind == "lift":
             rec = {"name": name.strip(), "mountain": mount or "Unknown",
                    "status": str(sval) if sval is not None else "", "open": is_open_value(sval)}
             self.lifts.append(rec)
+            self.lift_raw.append((rec, item))
             if len(self.example_lifts) < 1:
                 self.example_lifts.append(item)
         else:
@@ -361,7 +379,7 @@ class Collector:
                                 cc["mountain"] = mountain_from(nm)
                             else:
                                 cc["area"] = nm
-                                am = self.area_mountain(x)
+                                am = AREA_MOUNTAIN.get(nm.strip().lower()) or self.area_mountain(x)
                                 if am:
                                     cc["mountain"] = am
                                 self.areas.append((nm, am, x))
@@ -527,6 +545,9 @@ def terrain_diag(col):
     print("mountain-like field values:")
     for f, c in col.mount_seen.items():
         print("   %s: %s" % (f, c.most_common(10)))
+    print("ALL LIFTS (name | raw Mountain | raw Status | resolved):")
+    for l, raw in col.lift_raw:
+        print("   %r | %r | %r | %s" % (l["name"], raw.get("Mountain"), raw.get("Status"), l["mountain"]))
     print("grooming areas (name | mountain inferred | trails | lifts[name:Mountain] | first trails):")
     for nm, am, x in col.areas:
         _, trails = pick(x, "trails", "runs")

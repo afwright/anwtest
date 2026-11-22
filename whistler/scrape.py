@@ -318,7 +318,7 @@ class Collector:
                 mount = min(pos)[1]
             elif any(k in low for k in ("base 2", "chateau", "admin")):
                 mount = "Blackcomb"
-            elif any(k in low for k in ("creekside", "olympic", "clc", "super carpet", "scamp", "fantastic")):
+            elif any(k in low for k in ("creekside", "olympic", "clc", "super carpet", "snowboard carpet", "foxy hollow", "scamp", "fantastic")):
                 mount = "Whistler"
         if mount is None:
             self.unknown_mountain += 1

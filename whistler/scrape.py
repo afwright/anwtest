@@ -44,7 +44,7 @@ DIFFICULTY_MAP = {
     "blue square": "blue",
     "black": "black", "advanced": "black", "difficult": "black",
     "most difficult": "black", "black diamond": "black",
-    "double black": "double", "double black diamond": "double", "expert": "double",
+    "doubleblack": "double", "double black": "double", "double black diamond": "double", "expert": "double",
     "extreme": "double", "experts only": "double", "double": "double",
     "park": "park", "terrain park": "park", "terrain_park": "park",
     "freestyle": "park", "terrainpark": "park",
@@ -254,6 +254,21 @@ class Collector:
         self.mount_seen = defaultdict(Counter)    # field -> Counter(value)
         self.example_lifts, self.example_runs = [], []
         self.unknown_mountain = 0
+        self.areas = []
+        self.seen_ids = {"lift": set(), "run": set()}
+
+    def area_mountain(self, area):
+        """Infer an area's mountain from the Mountain field of the lifts inside it."""
+        votes = Counter()
+        for k, v in area.items():
+            if nk(k) == "lifts" and isinstance(v, list):
+                for l in v:
+                    if isinstance(l, dict):
+                        _, mv = pick(l, *MOUNT_KEYS)
+                        m = mountain_from(mv)
+                        if m:
+                            votes[m] += 1
+        return votes.most_common(1)[0][0] if votes else None
 
     def mountain_of(self, item, ctx):
         for k in item:
@@ -269,6 +284,11 @@ class Collector:
         _, name = pick(item, *NAME_KEYS)
         if not isinstance(name, str):
             return
+        _, iid = pick(item, "id")
+        if iid is not None:
+            if iid in self.seen_ids[kind]:
+                return
+            self.seen_ids[kind].add(iid)
         skey, sval = pick(item, *STATUS_KEYS)
         self.status_seen[kind][(skey, repr(sval))] += 1
         mount = self.mountain_of(item, ctx)
@@ -341,6 +361,10 @@ class Collector:
                                 cc["mountain"] = mountain_from(nm)
                             else:
                                 cc["area"] = nm
+                                am = self.area_mountain(x)
+                                if am:
+                                    cc["mountain"] = am
+                                self.areas.append((nm, am, x))
                         self.walk(x, cc, "%s.%s[]" % (path, k))
                 elif isinstance(v, (dict, list)):
                     self.walk(v, child_ctx, "%s.%s" % (path, k))
@@ -355,12 +379,12 @@ class Collector:
 SNOW_FIELDS = [
     ("base_cm", re.compile(r"base|depth")),
     ("overnight_cm", re.compile(r"overnight|last12|12h")),
-    ("h24_cm", re.compile(r"24")),
-    ("h48_cm", re.compile(r"48")),
+    ("h24_cm", re.compile(r"24|twentyfour")),
+    ("h48_cm", re.compile(r"48|fortyeight")),
     ("d7_cm", re.compile(r"7day|last7|sevenday|7d|week")),
     ("season_cm", re.compile(r"season|total|ytd")),
 ]
-TIME_KEYS = ("lastupdated", "updated", "reporttime", "timestamp", "reportdate", "date", "lastupdate",
+TIME_KEYS = ("lastupdatedtext", "lastupdated", "updated", "reporttime", "timestamp", "reportdate", "date", "lastupdate",
              "datetime", "updatedat", "time")
 
 
@@ -503,6 +527,14 @@ def terrain_diag(col):
     print("mountain-like field values:")
     for f, c in col.mount_seen.items():
         print("   %s: %s" % (f, c.most_common(10)))
+    print("grooming areas (name | mountain inferred | trails | lifts[name:Mountain] | first trails):")
+    for nm, am, x in col.areas:
+        _, trails = pick(x, "trails", "runs")
+        _, lifts = pick(x, "lifts")
+        print("   %r | %s | %d | %s | %s" % (
+            nm, am, len(trails or []),
+            [(l.get("Name"), l.get("Mountain")) for l in (lifts or []) if isinstance(l, dict)][:6],
+            [t.get("Name") for t in (trails or [])[:3] if isinstance(t, dict)]))
     print("runs per mountain:", dict(Counter(r["mountain"] for r in col.runs)))
     print("lifts per mountain:", dict(Counter(r["mountain"] for r in col.lifts)))
     for known, mt in (("Pony Trail", "Whistler"), ("Upper Olympic", "Whistler"), ("Green Line", "Blackcomb")):
@@ -537,8 +569,21 @@ def main():
     page_diag("snow", SNOW_URL, s_status, s_size, s_text, s_err, s_blobs, s_prob)
 
     col = Collector()
-    for name, obj in t_blobs.items():
-        col.walk(obj, {}, "FR." + name)
+    feeds = [(n, o) for n, o in t_blobs.items() if n.split("#")[0] == "TerrainStatusFeed"]
+    chosen = None
+    for n, o in feeds:
+        lifts0 = o.get("Lifts") if isinstance(o, dict) else None
+        if lifts0 and isinstance(lifts0[0], dict) and isinstance(lifts0[0].get("Status"), str):
+            chosen = (n, o)
+            break
+    if chosen is None and feeds:
+        chosen = feeds[0]
+    if chosen:
+        print("using terrain blob FR.%s (of %s)" % (chosen[0], [f[0] for f in feeds]))
+        col.walk(chosen[1], {}, "FR." + chosen[0])
+    else:
+        for name, obj in t_blobs.items():
+            col.walk(obj, {}, "FR." + name)
     # snow page sometimes also carries lift/run data; ignore unless terrain page empty
     if not col.runs and not col.lifts:
         for name, obj in s_blobs.items():
@@ -551,7 +596,7 @@ def main():
 
     print("-" * 78)
     print("SNOW parse")
-    snow_src = dict(s_blobs)
+    snow_src = {k: v for k, v in s_blobs.items() if k.split("#")[0].lower() == "snowreportdata"}
     if not snow_src:
         snow_src = {k: v for k, v in t_blobs.items() if re.search(r"snow|weather", k, re.I)}
     snow = parse_snow(snow_src) if snow_src else {k: None for k in ("base_cm", "overnight_cm", "h24_cm", "h48_cm", "d7_cm", "season_cm", "report_time")}

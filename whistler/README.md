@@ -12,13 +12,12 @@ running, snow numbers and the 7-day forecast for Whistler Blackcomb. Unofficial.
 
 ## One-time setup
 
-1. Settings -> Pages -> Source: **GitHub Actions**.
-2. Merge to `main` so the schedule runs (scheduled workflows only run on the default branch).
-3. DNS: add a CNAME record `whistler` -> `afwright.github.io`.
-4. Settings -> Pages -> Custom domain = `whistler.businessmind.ai` (the `CNAME` file ships in the Pages artifact).
-5. Tick **Enforce HTTPS** once the certificate is issued.
+1. Settings -> Pages -> Source: **GitHub Actions** (done).
+2. Scheduled runs only fire from `main`.
 
-Lives at: https://whistler.businessmind.ai
-Fallback: https://afwright.github.io/anwtest/
+No custom domain needed: the account's user site already uses `businessmind.ai`, so this project
+site is served at its path, like the other project sites.
+
+Lives at: https://businessmind.ai/anwtest/
 
 Tests: `cd whistler && python -m unittest`

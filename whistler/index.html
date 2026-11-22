@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Whistler conditions</title>
+<style>
+:root{
+  --bg:#f4f7fa;--card:#fff;--ink:#14212b;--mute:#5a6b78;--line:#dde5ec;
+  --accent:#0b6bcb;--accent-ink:#fff;--green:#1b8a3a;--green-bg:#e3f5e8;
+  --blue:#1565c0;--black:#222;--warn:#b45309;--warn-bg:#fff1dc;--bad:#b3261e;--bad-bg:#fde8e6;
+  --chip:#e8eef4;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e151b;--card:#18222b;--ink:#e8eef3;--mute:#9aabb8;--line:#2a3743;
+  --accent:#5aa9f5;--accent-ink:#06121d;--green:#58d27a;--green-bg:#17301f;
+  --blue:#6fb0f7;--black:#ddd;--warn:#f4b45f;--warn-bg:#3a2a12;--bad:#ff8a80;--bad-bg:#3b1a18;--chip:#243240;}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+main,header .in,footer{max-width:720px;margin:0 auto;padding-left:16px;padding-right:16px}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 0 10px}
+header .in{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+h1{font-size:1.25rem;margin:0}
+.upd{color:var(--mute);font-size:.85rem}
+.badge{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--mute);vertical-align:middle}
+.badge.stale{background:var(--warn-bg);color:var(--warn)}
+.badge.groom{background:var(--green-bg);color:var(--green)}
+section{margin:16px 0}
+h2{font-size:1.05rem;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.hero{border-color:var(--green);border-width:2px}
+.hero h2{font-size:1.2rem}
+.counts{display:flex;gap:10px;margin:6px 0 12px}
+.count{flex:1;background:var(--green-bg);border-radius:12px;padding:10px;text-align:center}
+.count b{display:block;font-size:2rem;line-height:1.1;color:var(--green)}
+.count span{font-size:.8rem;color:var(--mute)}
+.mt{font-weight:700;margin:12px 0 2px}
+.area{font-size:.8rem;color:var(--mute);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 2px}
+ul.list{list-style:none;margin:0;padding:0}
+ul.list li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--line);min-height:44px}
+ul.list li:first-child{border-top:0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--mute);flex:none}
+.dot.green{background:var(--green)}.dot.blue{background:var(--blue)}.dot.black{background:var(--black)}
+.dot.double{background:var(--black);box-shadow:0 0 0 2px var(--bad)}.dot.park{background:var(--warn)}
+.dot.open{background:var(--green)}.dot.closed{background:var(--bad)}
+.nm{display:flex;align-items:center;min-width:0}
+.nm span.t{overflow-wrap:anywhere}
+.st{font-size:.8rem;color:var(--mute);white-space:nowrap}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+button.chip,.seg button{font:inherit;min-height:44px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer}
+button.chip[aria-pressed=true],.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.seg{display:inline-flex;gap:4px}
+.seg button{padding:0 12px;min-height:40px}
+.lab{font-size:.8rem;color:var(--mute);margin-top:8px}
+.msg{padding:12px;border-radius:10px;background:var(--warn-bg);color:var(--warn)}
+.msg a{color:inherit;font-weight:600}
+.msg.bad{background:var(--bad-bg);color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.grid .c{background:var(--chip);border-radius:10px;padding:10px}
+.grid .c b{font-size:1.3rem;display:block}.grid .c span{font-size:.8rem;color:var(--mute)}
+.grid .c.wide{grid-column:1/-1}
+.fc{display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.fc:first-of-type{border-top:0}
+.fc .ic{font-size:1.5rem;grid-row:span 2}
+.fc .d{font-weight:600}.fc .s{font-size:.8rem;color:var(--mute)}
+.fc .sn{text-align:right;font-weight:600}
+.fc .tt{text-align:right;font-size:.85rem}
+.head2{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+footer{color:var(--mute);font-size:.8rem;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+footer a{color:var(--accent)}
+.sk{color:var(--mute)}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <div><h1>Whistler conditions</h1><div class="upd" id="upd">Loading...</div></div>
+  <div id="stale"></div>
+</div></header>
+<main>
+  <section class="card hero" aria-labelledby="hh"><h2 id="hh">Kids' greens</h2><div id="hero">Loading...</div></section>
+
+  <section aria-labelledby="rh"><h2 id="rh">Runs</h2><div class="card">
+    <div class="row" id="diffChips" role="group" aria-label="Difficulty"></div>
+    <div class="row">
+      <button class="chip" id="openOnly" aria-pressed="true">Open only</button>
+      <span class="seg" id="mtn" role="group" aria-label="Mountain"></span>
+    </div>
+    <div id="runs"></div>
+  </div></section>
+
+  <section aria-labelledby="lh"><h2 id="lh">Lifts</h2><div class="card" id="lifts"></div></section>
+
+  <section aria-labelledby="sh"><div class="head2"><h2 id="sh">Snow</h2>
+    <span><span class="seg" id="uLen"></span> <span class="seg" id="uTemp"></span></span></div>
+    <div class="card" id="snow"></div></section>
+
+  <section aria-labelledby="fh"><div class="head2"><h2 id="fh">Forecast</h2><span class="seg" id="fpt"></span></div>
+    <div class="card" id="fc">Loading forecast...</div></section>
+</main>
+<footer>
+  <p>Sources: lift, run and snow data from the public
+  <a href="https://www.whistlerblackcomb.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx">Whistler Blackcomb terrain status</a> and
+  <a href="https://www.whistlerblackcomb.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx">snow report</a> pages, refreshed by a scheduled job;
+  forecast from <a href="https://open-meteo.com/">Open-Meteo</a>.</p>
+  <p>Unofficial. Not affiliated with Whistler Blackcomb or Vail Resorts. Conditions change fast; always check official signage and ski patrol.</p>
+</footer>
+<script>
+(function(){
+"use strict";
+var TERRAIN_URL="https://www.whistlerblackcomb.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx";
+var DIFFS=[["green","Green"],["blue","Blue"],["black","Black"],["double","Double"],["park","Park"],["all","All"]];
+var MTNS=[["both","Both"],["Whistler","Whistler"],["Blackcomb","Blackcomb"]];
+var S={diff:"green",openOnly:true,mtn:"both",len:"cm",temp:"C",fpt:"village"};
+var data=null,fcData=null,fcErr=null;
+
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+(function load(){
+  var raw=lsGet("wh.prefs");
+  if(!raw)return;
+  try{var o=JSON.parse(raw);for(var k in S){if(o&&o[k]!==undefined&&typeof o[k]===typeof S[k])S[k]=o[k]}}catch(e){}
+})();
+function save(){lsSet("wh.prefs",JSON.stringify(S))}
+
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function fmtLen(cm){if(cm==null||isNaN(cm))return "–";return S.len==="cm"?Math.round(cm)+" cm":(Math.round(cm/2.54*10)/10)+" in"}
+function fmtSnow(cm){if(cm==null||isNaN(cm))return "–";return S.len==="cm"?(Math.round(cm*10)/10)+" cm":(Math.round(cm/2.54*10)/10)+" in"}
+function fmtT(c){if(c==null||isNaN(c))return "–";return S.temp==="C"?Math.round(c)+"°C":Math.round(c*9/5+32)+"°F"}
+function fmtAlt(m){if(m==null||isNaN(m))return "–";return S.len==="cm"?Math.round(m/10)*10+" m":Math.round(m*3.281/50)*50+" ft"}
+
+function seg(el,opts,cur,on){
+  el.innerHTML=opts.map(function(o){return '<button type="button" data-v="'+esc(o[0])+'" aria-pressed="'+(cur===o[0])+'">'+esc(o[1])+'</button>'}).join("");
+  el.onclick=function(e){var b=e.target.closest("button");if(b)on(b.getAttribute("data-v"))};
+}
+function chips(el,opts,cur,on){
+  el.innerHTML=opts.map(function(o){return '<button type="button" class="chip" data-v="'+esc(o[0])+'" aria-pressed="'+(cur===o[0])+'">'+esc(o[1])+'</button>'}).join("");
+  el.onclick=function(e){var b=e.target.closest("button");if(b)on(b.getAttribute("data-v"))};
+}
+
+function group(items){ // mountain -> area -> [runs]
+  var g={};
+  items.forEach(function(r){var m=r.mountain||"Unknown",a=r.area||"";((g[m]=g[m]||{})[a]=g[m][a]||[]).push(r)});
+  return g;
+}
+function runLi(r,showDiff){
+  return '<li><span class="nm"><span class="dot '+esc(showDiff?r.difficulty:"green")+'"></span><span class="t">'+esc(r.name)+'</span></span>'+
+    '<span class="st">'+(r.groomed?'<span class="badge groom">Groomed</span> ':'')+(r.open?'':'Closed')+'</span></li>';
+}
+function groupedHtml(items,showDiff){
+  var g=group(items),h="";
+  Object.keys(g).sort().forEach(function(m){
+    h+='<div class="mt">'+esc(m)+'</div>';
+    Object.keys(g[m]).sort().forEach(function(a){
+      if(a)h+='<div class="area">'+esc(a)+'</div>';
+      h+='<ul class="list">'+g[m][a].sort(function(x,y){return x.name.localeCompare(y.name)}).map(function(r){return runLi(r,showDiff)}).join("")+'</ul>';
+    });
+  });
+  return h;
+}
+function noTerrain(){
+  return '<div class="msg">Live run and lift status is not available right now. Check the <a href="'+TERRAIN_URL+'" target="_blank" rel="noopener">official terrain status page</a>.</div>';
+}
+
+function renderHeader(){
+  var d=data&&data.updated?new Date(data.updated):null,ok=d&&!isNaN(d)&&d.getFullYear()>2000;
+  $("upd").textContent=ok?"Updated "+new Intl.DateTimeFormat("en-CA",{timeZone:"America/Vancouver",weekday:"short",hour:"numeric",minute:"2-digit",month:"short",day:"numeric"}).format(d)+" (Vancouver)":"No data yet";
+  var stale=!ok||(Date.now()-d.getTime()>2*3600*1000)||!data.terrain_ok;
+  $("stale").innerHTML=stale?'<span class="badge stale">Stale</span>':"";
+}
+function renderHero(){
+  var el=$("hero");
+  if(!data){el.innerHTML='<div class="msg bad">Could not load conditions.</div>';return}
+  if(!data.terrain_ok||!data.runs.length){el.innerHTML=noTerrain();return}
+  var greens=data.runs.filter(function(r){return r.difficulty==="green"});
+  var open=greens.filter(function(r){return r.open});
+  var ms=["Whistler","Blackcomb"].filter(function(m){return greens.some(function(r){return r.mountain===m})});
+  if(!ms.length)ms=Object.keys(group(greens)).sort();
+  var h='<div class="counts">'+ms.map(function(m){
+    var t=greens.filter(function(r){return r.mountain===m}),o=t.filter(function(r){return r.open});
+    return '<div class="count"><b>'+o.length+'</b><span>'+esc(m)+' greens open<br>of '+t.length+'</span></div>'}).join("")+'</div>';
+  h+=open.length?groupedHtml(open,false):'<p class="sk">No green runs are reported open right now.</p>';
+  el.innerHTML=h;
+}
+function renderRuns(){
+  chips($("diffChips"),DIFFS,S.diff,function(v){S.diff=v;save();renderRuns()});
+  $("openOnly").setAttribute("aria-pressed",String(S.openOnly));
+  seg($("mtn"),MTNS,S.mtn,function(v){S.mtn=v;save();renderRuns()});
+  var el=$("runs");
+  if(!data||!data.terrain_ok||!data.runs.length){el.innerHTML=noTerrain();return}
+  var items=data.runs.filter(function(r){
+    return (S.diff==="all"||r.difficulty===S.diff)&&(!S.openOnly||r.open)&&(S.mtn==="both"||r.mountain===S.mtn)});
+  el.innerHTML=items.length?groupedHtml(items,S.diff==="all"):'<p class="sk">No runs match these filters.</p>';
+}
+function renderLifts(){
+  var el=$("lifts");
+  if(!data||!data.terrain_ok||!data.lifts.length){el.innerHTML=noTerrain();return}
+  var g={};data.lifts.forEach(function(l){(g[l.mountain||"Unknown"]=g[l.mountain||"Unknown"]||[]).push(l)});
+  el.innerHTML=Object.keys(g).sort().map(function(m){
+    var o=g[m].filter(function(l){return l.open}).length;
+    return '<div class="mt">'+esc(m)+' <span class="badge">'+o+'/'+g[m].length+' open</span></div><ul class="list">'+
+      g[m].map(function(l){return '<li><span class="nm"><span class="dot '+(l.open?'open':'closed')+'"></span><span class="t">'+esc(l.name)+'</span></span><span class="st">'+esc(l.open?"Open":(l.status&&l.status!=="false"&&l.status!=="0"?l.status:"Closed"))+'</span></li>'}).join("")+'</ul>';
+  }).join("");
+}
+function renderSnow(){
+  seg($("uLen"),[["cm","cm"],["in","in"]],S.len,function(v){S.len=v;save();renderAll()});
+  seg($("uTemp"),[["C","°C"],["F","°F"]],S.temp,function(v){S.temp=v;save();renderAll()});
+  var el=$("snow"),sn=data&&data.snow;
+  if(data&&data.snow_ok&&sn){
+    var cells=[["Base depth",sn.base_cm,1],["Overnight",sn.overnight_cm],["24 h",sn.h24_cm],["48 h",sn.h48_cm],["7 days",sn.d7_cm],["Season",sn.season_cm]];
+    el.innerHTML='<div class="grid">'+cells.map(function(c){return '<div class="c'+(c[2]?' wide':'')+'"><b>'+(c[2]?fmtLen(c[1]):fmtSnow(c[1]))+'</b><span>'+c[0]+'</span></div>'}).join("")+'</div>'+
+      (sn.report_time?'<div class="lab">Resort report: '+esc(sn.report_time)+'</div>':'');
+    return;
+  }
+  var est=fcData&&fcData.alpine&&fcData.alpine.depthCm;
+  el.innerHTML='<div class="msg">The resort snow report is not available right now.</div>'+
+    (est!=null?'<div class="grid" style="margin-top:8px"><div class="c wide"><b>'+fmtLen(est)+'</b><span>Alpine snow depth, model estimate (Open-Meteo)</span></div></div>':'');
+}
+
+var WX={0:["☀️","Clear"],1:["🌤️","Mostly clear"],2:["⛅","Partly cloudy"],3:["☁️","Overcast"],45:["🌫️","Fog"],48:["🌫️","Rime fog"],
+51:["🌦️","Light drizzle"],53:["🌦️","Drizzle"],55:["🌧️","Heavy drizzle"],56:["🌧️","Freezing drizzle"],57:["🌧️","Freezing drizzle"],
+61:["🌧️","Light rain"],63:["🌧️","Rain"],65:["🌧️","Heavy rain"],66:["🌧️","Freezing rain"],67:["🌧️","Freezing rain"],
+71:["🌨️","Light snow"],73:["🌨️","Snow"],75:["❄️","Heavy snow"],77:["🌨️","Snow grains"],80:["🌦️","Showers"],81:["🌧️","Showers"],82:["⛈️","Violent showers"],
+85:["🌨️","Snow showers"],86:["❄️","Heavy snow showers"],95:["⛈️","Thunderstorm"],96:["⛈️","Thunderstorm, hail"],99:["⛈️","Thunderstorm, hail"]};
+function wx(c){return WX[c]||["❔","Code "+c]}
+var DAYF=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Vancouver",weekday:"short",month:"short",day:"numeric"});
+
+function fetchPoint(lat,lon,elev,alpine){
+  var u="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+(elev?"&elevation="+elev:"")+
+    "&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum,wind_speed_10m_max"+
+    "&hourly=freezing_level_height"+(alpine?",snow_depth":"")+"&forecast_days=7&timezone=America%2FVancouver&wind_speed_unit=kmh";
+  return fetch(u).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(j){
+    var minFz=[],i,d=j.daily.time;
+    for(i=0;i<d.length;i++){
+      var vals=[];
+      (j.hourly.time||[]).forEach(function(t,k){if(t.slice(0,10)===d[i]&&j.hourly.freezing_level_height[k]!=null)vals.push(j.hourly.freezing_level_height[k])});
+      minFz.push(vals.length?Math.min.apply(null,vals):null);
+    }
+    var depth=null;
+    if(alpine&&j.hourly.snow_depth){
+      var nowIso=new Date().toISOString().slice(0,13),k0=0;
+      for(var k=0;k<j.hourly.time.length;k++){if(j.hourly.snow_depth[k]!=null){depth=j.hourly.snow_depth[k]*100;if(j.hourly.time[k]>=nowIso)break}}
+    }
+    return{daily:j.daily,minFz:minFz,depthCm:depth};
+  });
+}
+function loadForecast(){
+  Promise.all([fetchPoint(50.1163,-122.9574,null,false),fetchPoint(50.0593,-122.9467,1850,true)]).then(function(r){
+    fcData={village:r[0],alpine:r[1]};fcErr=null;renderFc();renderSnow();
+  }).catch(function(e){fcErr=e;renderFc()});
+}
+function renderFc(){
+  seg($("fpt"),[["village","Village"],["alpine","Alpine"]],S.fpt,function(v){S.fpt=v;save();renderFc()});
+  var el=$("fc");
+  if(!fcData){el.innerHTML=fcErr?'<div class="msg">Forecast unavailable (offline or blocked). Try again later.</div>':"Loading forecast...";return}
+  var p=fcData[S.fpt],d=p.daily;
+  el.innerHTML=d.time.map(function(t,i){
+    var w=wx(d.weather_code[i]),dt=new Date(t+"T12:00:00-08:00");
+    return '<div class="fc"><div class="ic" title="'+esc(w[1])+'">'+w[0]+'</div><div class="d">'+esc(DAYF.format(dt))+' <span class="s">'+esc(w[1])+'</span></div>'+
+      '<div class="sn">'+fmtSnow(d.snowfall_sum[i])+'</div>'+
+      '<div class="s">Wind '+Math.round(d.wind_speed_10m_max[i])+' km/h · Freezing '+fmtAlt(p.minFz[i])+'</div>'+
+      '<div class="tt">'+fmtT(d.temperature_2m_max[i])+' / '+fmtT(d.temperature_2m_min[i])+'</div></div>';
+  }).join("")+(S.fpt==="alpine"&&p.depthCm!=null?'<div class="lab">Snow depth '+fmtLen(p.depthCm)+' (model estimate, Open-Meteo)</div>':'')+
+  '<div class="lab">'+(S.fpt==="alpine"?'Alpine point, 1850 m':'Village point')+'. Snowfall is the daily total.</div>';
+}
+
+function renderAll(){renderHeader();renderHero();renderRuns();renderLifts();renderSnow();renderFc()}
+
+$("openOnly").onclick=function(){S.openOnly=!S.openOnly;save();renderRuns()};
+
+function loadData(){
+  fetch("data.json?t="+Date.now(),{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(j){
+    j.runs=j.runs||[];j.lifts=j.lifts||[];data=j;renderAll();
+  }).catch(function(){if(!data){data=null;renderAll();$("upd").textContent="Could not load data"}});
+}
+renderAll();
+loadData();loadForecast();
+setInterval(function(){loadData();loadForecast()},10*60*1000);
+})();
+</script>
+</body>
+</html>

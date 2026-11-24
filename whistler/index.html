@@ -27,6 +27,34 @@ h1{font-size:1.25rem;margin:0}
 .upd{color:var(--mute);font-size:.85rem}
 .badge{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--mute);vertical-align:middle}
 .badge.stale{background:var(--warn-bg);color:var(--warn)}
+.badge.bad{background:var(--bad-bg);color:var(--bad)}
+.upd.old{color:var(--warn);font-weight:600}
+.acts{display:flex;align-items:center;gap:8px}
+.rbtn,.gbtn,.btn{font:inherit;min-height:48px;border-radius:99px;border:1px solid var(--line);background:var(--chip);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.rbtn{padding:0 18px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.rbtn[disabled]{opacity:.6;cursor:default}
+.gbtn{width:48px;padding:0;font-size:1.2rem}
+.rstate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.9rem;color:var(--mute);margin-top:8px}
+.rstate:empty{display:none}
+.rstate.err{color:var(--bad)}
+.rstate.ok{color:var(--green)}
+.rstate .btn{min-height:44px;padding:0 14px;font-size:.9rem}
+.spin{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--accent);animation:sp .8s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.ovl.on{display:flex}
+.sheet{background:var(--card);color:var(--ink);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
+.sheet h2{font-size:1.15rem}
+.sheet ol{padding-left:20px;margin:8px 0}
+.sheet li{margin:4px 0}
+.sheet a{color:var(--accent)}
+.sheet input{width:100%;font:inherit;min-height:48px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);margin:8px 0}
+.sheet .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.sheet .btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.sheet .btn{padding:0 18px}
+.sheet .fine{font-size:.8rem;color:var(--mute);margin:10px 0 0}
+.sheet .note{font-size:.85rem;margin:6px 0 0;min-height:1.2em;color:var(--mute)}
 .badge.groom{background:var(--green-bg);color:var(--green)}
 section{margin:16px 0}
 h2{font-size:1.05rem;margin:0 0 8px}
@@ -76,9 +104,11 @@ footer a{color:var(--accent)}
 </head>
 <body>
 <header><div class="in">
-  <div><h1>Whistler conditions</h1><div class="upd" id="upd">Loading...</div></div>
-  <div id="stale"></div>
-</div></header>
+  <div><h1>Whistler conditions</h1><div class="upd" id="upd">Loading...</div><div id="stale"></div></div>
+  <div class="acts"><button type="button" class="rbtn" id="refresh">&#8635; Refresh now</button>
+  <button type="button" class="gbtn" id="gear" aria-label="Refresh setup" title="Refresh setup">&#9881;</button></div>
+</div>
+<div class="in"><div class="rstate" id="rstate" role="status" aria-live="polite"></div></div></header>
 <main>
   <section class="card hero" aria-labelledby="hh"><h2 id="hh">Kids' greens</h2><div id="hero">Loading...</div></section>
 
@@ -100,11 +130,31 @@ footer a{color:var(--accent)}
   <section aria-labelledby="fh"><div class="head2"><h2 id="fh">Forecast</h2><span class="seg" id="fpt"></span></div>
     <div class="card" id="fc">Loading forecast...</div></section>
 </main>
+<div class="ovl" id="ovl"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sth">
+  <h2 id="sth">Refresh setup</h2>
+  <p>To refresh on demand, save a GitHub token that can run the update job.</p>
+  <ol>
+    <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Create a fine-grained token</a></li>
+    <li>Resource owner: afwright</li>
+    <li>Repository access: Only select repositories, then anwtest</li>
+    <li>Permissions: Repository, Actions, Read and write</li>
+    <li>Expiration: 30 days</li>
+    <li>Paste it below and tap Save</li>
+  </ol>
+  <label for="tok" class="lab">GitHub token</label>
+  <input type="password" id="tok" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_...">
+  <div class="btns"><button type="button" class="btn pri" id="tokSave">Save</button>
+  <button type="button" class="btn" id="tokDel">Remove</button>
+  <button type="button" class="btn" id="tokClose">Close</button></div>
+  <div class="note" id="tokNote" role="status"></div>
+  <p class="fine">The token stays only in this browser, is never sent anywhere except api.github.com, and can only run workflows in this one test repo.</p>
+</div></div>
 <footer>
   <p>Sources: lift, run and snow data from the public
   <a href="https://www.whistlerblackcomb.com/the-mountain/mountain-conditions/terrain-and-lift-status.aspx">Whistler Blackcomb terrain status</a> and
   <a href="https://www.whistlerblackcomb.com/the-mountain/mountain-conditions/snow-and-weather-report.aspx">snow report</a> pages, refreshed by a scheduled job;
   forecast from <a href="https://open-meteo.com/">Open-Meteo</a>.</p>
+  <p><a href="https://github.com/afwright/anwtest/actions/workflows/whistler.yml" target="_blank" rel="noopener">Run on GitHub</a></p>
   <p>Unofficial. Not affiliated with Whistler Blackcomb or Vail Resorts. Conditions change fast; always check official signage and ski patrol.</p>
 </footer>
 <script>
@@ -165,11 +215,23 @@ function noTerrain(){
   return '<div class="msg">Live run and lift status is not available right now. Check the <a href="'+TERRAIN_URL+'" target="_blank" rel="noopener">official terrain status page</a>.</div>';
 }
 
+function fmtAgo(ms){
+  var m=Math.floor(ms/60000);
+  if(m<1)return "just now";
+  if(m<60)return m+"m ago";
+  var h=Math.floor(m/60);m=m%60;
+  if(h<24)return h+"h "+m+"m ago";
+  return Math.floor(h/24)+"d "+(h%24)+"h ago";
+}
 function renderHeader(){
-  var d=data&&data.updated?new Date(data.updated):null,ok=d&&!isNaN(d)&&d.getFullYear()>2000;
-  $("upd").textContent=ok?"Updated "+new Intl.DateTimeFormat("en-CA",{timeZone:"America/Vancouver",weekday:"short",hour:"numeric",minute:"2-digit",month:"short",day:"numeric"}).format(d)+" (Vancouver)":"No data yet";
-  var stale=!ok||(Date.now()-d.getTime()>2*3600*1000)||!data.terrain_ok;
-  $("stale").innerHTML=stale?'<span class="badge stale">Stale</span>':"";
+  var d=data&&data.updated?new Date(data.updated):null,ok=d&&!isNaN(d)&&d.getFullYear()>2000,u=$("upd");
+  if(ok){
+    var age=Math.max(0,Date.now()-d.getTime());
+    u.textContent="Updated "+fmtAgo(age);
+    u.title=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Vancouver",weekday:"short",hour:"numeric",minute:"2-digit",month:"short",day:"numeric"}).format(d)+" (Vancouver)";
+    u.className="upd"+(age>=2*3600*1000?" old":"");
+  }else{u.textContent=data?"No data yet":"Loading...";u.title="";u.className="upd"}
+  $("stale").innerHTML=data&&data.terrain_ok===false?'<span class="badge bad">Live data unavailable</span>':"";
 }
 function renderHero(){
   var el=$("hero");
@@ -276,6 +338,67 @@ function loadData(){
     j.runs=j.runs||[];j.lifts=j.lifts||[];data=j;renderAll();
   }).catch(function(){if(!data){data=null;renderAll();$("upd").textContent="Could not load data"}});
 }
+
+var TK="wb_gh_token",API="https://api.github.com/repos/afwright/anwtest/actions/workflows/whistler.yml/dispatches";
+var busy=false,hideT=null,pollT=null;
+function tkGet(){try{return localStorage.getItem(TK)||""}catch(e){return ""}}
+function tkSet(v){try{localStorage.setItem(TK,v);return true}catch(e){return false}}
+function tkDel(){try{localStorage.removeItem(TK);return true}catch(e){return false}}
+function openSheet(){$("tok").value="";$("tokNote").textContent=tkGet()?"A token is saved in this browser.":"";$("ovl").classList.add("on");$("tok").focus()}
+function closeSheet(){$("ovl").classList.remove("on");$("tok").value="";$("gear").focus()}
+function setState(kind,html){
+  clearTimeout(hideT);var el=$("rstate");el.className="rstate"+(kind?" "+kind:"");el.innerHTML=html;
+}
+function setupBtn(){return ' <button type="button" class="btn" id="stSetup">Open setup</button>'}
+function fail(msg,withSetup){
+  setState("err",'<span>'+esc(msg)+'</span>'+(withSetup?setupBtn():""));
+  var b=$("stSetup");if(b)b.onclick=openSheet;
+  endRun();
+}
+function endRun(){busy=false;$("refresh").disabled=false;clearTimeout(pollT)}
+function pollData(t0,deadline){
+  if(Date.now()>deadline){setState("err","<span>Still working. Try reloading in a minute</span>");endRun();return}
+  pollT=setTimeout(function(){
+    fetch("data.json?t="+Date.now(),{cache:"no-store"}).then(function(r){if(!r.ok)throw new Error("x");return r.json()}).then(function(j){
+      var d=Date.parse(j&&j.updated);
+      if(!isNaN(d)&&d>t0-60000){
+        j.runs=j.runs||[];j.lifts=j.lifts||[];data=j;renderAll();
+        setState("ok","<span>Updated just now</span>");endRun();
+        hideT=setTimeout(function(){setState("","")},5000);
+      }else pollData(t0,deadline);
+    }).catch(function(){pollData(t0,deadline)});
+  },10000);
+}
+function refresh(){
+  if(busy)return;
+  var t=tkGet();
+  if(!t){openSheet();return}
+  busy=true;$("refresh").disabled=true;
+  var t0=Date.now();
+  setState("",'<span class="spin" aria-hidden="true"></span><span>Starting refresh…</span>');
+  fetch(API,{method:"POST",headers:{"Authorization":"Bearer "+t,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"},body:JSON.stringify({ref:"main"})}).then(function(r){
+    if(r.status===204){
+      setState("",'<span class="spin" aria-hidden="true"></span><span>Refreshing… usually 1–2 min</span>');
+      pollData(t0,t0+4*60*1000);
+    }else if(r.status===401)fail("Token invalid or expired",true);
+    else if(r.status===403||r.status===404)fail("Token can't run workflows on afwright/anwtest (needs Actions: read and write)",true);
+    else fail("GitHub returned an unexpected response ("+r.status+"). Try again later.",false);
+  }).catch(function(){fail("Couldn't reach GitHub. Check your connection and try again.",false)});
+}
+$("refresh").onclick=refresh;
+$("gear").onclick=openSheet;
+$("tokClose").onclick=closeSheet;
+$("ovl").onclick=function(e){if(e.target===this)closeSheet()};
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&$("ovl").classList.contains("on"))closeSheet()});
+$("tokSave").onclick=function(){
+  var v=$("tok").value.trim();
+  if(!v){$("tokNote").textContent="Paste a token first.";return}
+  if(tkSet(v)){$("tok").value="";$("tokNote").textContent="Saved. Tap Refresh now to use it."}
+  else $("tokNote").textContent="Could not save: this browser blocks storage.";
+};
+$("tokDel").onclick=function(){$("tokNote").textContent=tkDel()?"Token removed.":"Could not remove the token."};
+setInterval(renderHeader,60*1000);
+
 renderAll();
 loadData();loadForecast();
 setInterval(function(){loadData();loadForecast()},10*60*1000);
